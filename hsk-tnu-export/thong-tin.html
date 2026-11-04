@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THÔNG TIN THI SINH | HSK - TNU</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand"><span class="logo-circle">&#127891;</span> HSK - TNU</div>
+    <div class="menu-toggle">&#9776;</div>
+    <div class="page-title">&#128179; THÔNG TIN THI SINH</div>
+    <div class="user-box">
+      <div class="avatar">&#128100;</div>
+      <div class="user-meta"><div class="name">Nguyễn văn a</div><div class="id">022201001758</div></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <a href="thong-tin.html" class="active"><span class="icon">&#128179;</span> Thông tin thi sinh</a>
+      <a href="dang-ky.html"><span class="icon">&#128228;</span> Đăng ký thi</a>
+      <a href="ket-qua.html"><span class="icon">&#9989;</span> Tra cứu kết quả</a>
+      <a href="chuyen-phat.html"><span class="icon">&#127991;</span> Đăng ký chuyển phát chứng chỉ</a>
+      <a href="tai-khoan.html"><span class="icon">&#128274;</span> Tài khoản của bạn</a>
+      <a href="#"><span class="icon">&#8618;</span> Đăng xuất</a>
+    </nav>
+
+    <main class="content">
+      <div class="card">
+        <h2 class="section-title">I. THÔNG TIN CÁ NHÂN THÍ SINH</h2>
+
+        <div class="form-grid">
+          <div class="field"><label>Họ và tên <span class="req">*</span></label><input type="text" value="Nguyễn văn a"></div>
+          <div class="field"><label>Họ và tên (Tiếng Trung Quốc)</label><input type="text" placeholder="Vd: 陈明龙"></div>
+          <div class="field"><label>Loại giấy tờ<span class="req">*</span></label><div class="fake-select filled">CCCD (hoặc hộ chiếu) <span>&#9662;</span></div></div>
+
+          <div class="field"><label>Số điện thoại<span class="req">*</span></label><input type="text" value="09876543321"></div>
+          <div class="field"><label>Ngày sinh <span class="req">*</span></label><input type="text" placeholder="__/__/____"></div>
+          <div class="field"><label>Giới tính<span class="req">*</span></label><div class="fake-select">Chọn... <span>&#9662;</span></div></div>
+
+          <div class="field"><label>Dân tộc</label><div class="fake-select">Chọn... <span>&#9662;</span></div></div>
+          <div class="field"><label>Tôn giáo</label><input type="text" placeholder="Vd: không,..."></div>
+          <div class="field"><label>Nơi sinh</label><div class="fake-select">Chọn... <span>&#9662;</span></div></div>
+
+          <div class="field"><label>Email <span class="req">*</span></label><input type="text" value="hongichik321@gmail.com"></div>
+          <div class="field"><label>Số năm học tiếng trung <span class="req">*</span></label><input type="number" placeholder="Vd: 1,2..."></div>
+          <div class="field"><label>Quốc tịch<span class="req">*</span></label><div class="fake-select">Chọn... <span>&#9662;</span></div></div>
+
+          <div class="field"><label>Ngôn ngữ mẹ<span class="req">*</span></label><div class="fake-select">Chọn... <span>&#9662;</span></div></div>
+        </div>
+
+        <div class="upload-notes-row">
+          <div class="upload-box">
+            <div class="upload-icon">&#8593;</div>
+            Tải ảnh chân dung(*)<br>(Dung lượng file tối thiểu 21kb và tối đa 100kb.)
+          </div>
+          <div class="notes">
+            <strong>Lưu ý:</strong><br>
+            <span class="ok">1. Ảnh chân dung đúng định dạnh:</span> yêu cầu ảnh chân dung có nền màu trắng, không đeo kính<br>
+            <span class="bad">2. Ảnh chân dung sai định dạnh:</span> nền màu xanh, đỏ, phông ảnh đời thường, ảnh tự sướng, ảnh đeo kính, ảnh có động vật,...
+            <div class="sample-photos">
+              <div class="sample-photo valid"><div class="frame"><img src="avata_hople.jpg" alt="Ảnh chân dung hợp lệ"></div><div class="tag">&#10003; Hợp lệ</div></div>
+              <div class="sample-photo invalid"><div class="frame"><img src="avata_kohople.jpg" alt="Ảnh chân dung không hợp lệ"></div><div class="tag">&#10007; Không hợp lệ</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="upload-pair">
+          <div class="upload-box"><div class="upload-icon">&#8593;</div>Tải ảnh CCCD(Hoặc hộ chiếu) mặt trước (*)</div>
+          <div class="upload-box"><div class="upload-icon">&#8593;</div>Tải ảnh CCCD(Hoặc hộ chiếu) mặt sau(*)</div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns:repeat(3,1fr);">
+          <div class="field"><label>Số CCCD(Hoặc hộ chiếu) <span class="req">*</span></label><input type="text" value="022201001758"></div>
+          <div class="field"><label>Ngày cấp <span class="req">*</span></label><input type="text" placeholder="__/__/____"></div>
+          <div class="field"><label>Nơi cấp <span class="req">*</span></label><input type="text" value="Cục quản lý hành chính về TTXH"></div>
+        </div>
+
+        <div class="field" style="margin-bottom:28px;">
+          <label>Địa chỉ thường trú<span class="req">*</span></label>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:10px;">
+            <div class="fake-select">Chọn Tỉnh, Thành phố <span>&#9662;</span></div>
+            <div class="fake-select">Chọn Quận, Huyện <span>&#9662;</span></div>
+            <div class="fake-select">Chọn Xã, Phường <span>&#9662;</span></div>
+          </div>
+          <input type="text" placeholder="Nhập địa chỉ" style="border:none;border-bottom:1px solid var(--border-color);border-radius:0;padding-left:0;">
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox">
+          Thí sinh cam kết những thông tin kê khai ở trên là đúng, nếu sai thí sinh có thể sẽ bị hủy tư cách dự thi và kết quả thi.
+        </label>
+
+        <div class="required-note">(*) bắt buộc phải nhập</div>
+        <div class="save-btn"><button type="button">&#9745; Lưu thông tin</button></div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
