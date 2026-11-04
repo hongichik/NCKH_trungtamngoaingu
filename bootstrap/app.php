@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'super-admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'owner' => \App\Http\Middleware\EnsureSystemOwner::class,
             'student.auth' => \App\Http\Middleware\EnsureStudentAuthenticated::class,
         ]);
     })

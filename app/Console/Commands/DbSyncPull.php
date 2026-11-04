@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Support\DbSync\DatabaseSync;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -39,36 +40,46 @@ class DbSyncPull extends Command
             return self::SUCCESS;
         }
 
-        $this->line('Đang tải dữ liệu từ máy chủ...');
-        $response = Http::withToken($token)
-            ->timeout((int) config('dbsync.http_timeout', 300))
-            ->get($url.'/api/db-sync/export', array_filter([
-                'tables' => $this->option('tables') ?: null,
-                'exclude' => $this->option('exclude') ?: null,
-            ]));
-
-        if (! $response->successful()) {
-            $this->error("Thất bại (HTTP {$response->status()}): ".($response->json('message') ?? substr($response->body(), 0, 500)));
-
-            return self::FAILURE;
-        }
+        $dir = storage_path('app/db-sync-tmp');
+        File::ensureDirectoryExists($dir);
+        $file = $dir.'/pull-'.bin2hex(random_bytes(8)).'.ndjson.gz';
 
         try {
-            $payload = $sync->decode($response->body());
+            $this->line('Đang tải dữ liệu từ máy chủ...');
+            $response = Http::withToken($token)
+                ->timeout((int) config('dbsync.http_timeout', 300))
+                ->sink($file)
+                ->get($url.'/api/db-sync/export', array_filter([
+                    'tables' => $this->option('tables') ?: null,
+                    'exclude' => $this->option('exclude') ?: null,
+                ]));
+
+            if (! $response->successful()) {
+                $this->error("Thất bại (HTTP {$response->status()}): ".mb_substr((string) @file_get_contents($file), 0, 300));
+
+                return self::FAILURE;
+            }
+
+            $this->line('Đã tải: <info>'.number_format(filesize($file) / 1024, 1).' KB</info>');
+
+            $meta = $sync->readMeta([$file]);
 
             $this->call('migrate', ['--force' => true]);
 
-            if ($missing = $sync->missingMigrations($payload)) {
+            if ($missing = $sync->missingMigrations($meta)) {
                 $this->error('Máy này thiếu migration so với máy chủ (hãy git pull): '.implode(', ', $missing));
 
                 return self::FAILURE;
             }
 
-            $result = $sync->import($payload);
+            $this->line('Đang nhập dữ liệu...');
+            $result = $sync->import([$file]);
         } catch (Throwable $e) {
-            $this->error('Nhập dữ liệu thất bại, đã hoàn tác: '.$e->getMessage());
+            $this->error('Thất bại, dữ liệu local không thay đổi: '.$e->getMessage());
 
             return self::FAILURE;
+        } finally {
+            File::delete($file);
         }
 
         $this->table(['Bảng', 'Số dòng'], collect($result['tables'])->map(fn ($n, $t) => [$t, $n])->values()->all());

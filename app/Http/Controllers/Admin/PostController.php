@@ -6,21 +6,93 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\PostImage;
+use App\Models\User;
 use App\Support\ImageOptimizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class PostController extends Controller
 {
-    public function index(): View
-    {
-        $posts = Post::with('categories')->latest()->paginate(20);
+    public const SORTS = [
+        'newest' => 'Mới nhất',
+        'oldest' => 'Cũ nhất',
+        'updated' => 'Mới sửa gần đây',
+        'views_desc' => 'Xem nhiều nhất',
+        'views_asc' => 'Xem ít nhất',
+        'title' => 'Tiêu đề A → Z',
+    ];
 
-        return view('admin.posts.index', compact('posts'));
+    public function index(Request $request): View
+    {
+        // Invalid values are dropped rather than redirecting (which would loop on a bad URL).
+        $filters = Validator::make($request->query(), [
+            'q' => ['nullable', 'string', 'max:200'],
+            'status' => ['nullable', 'in:published,draft'],
+            'category' => ['nullable', 'string', 'max:20'],
+            'featured' => ['nullable', 'in:1,0'],
+            'image' => ['nullable', 'in:with,without'],
+            'author' => ['nullable', 'integer'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'sort' => ['nullable', 'in:'.implode(',', array_keys(self::SORTS))],
+            'per_page' => ['nullable', 'in:20,50,100'],
+        ])->valid();
+
+        // Everything except the status tab, so the tab counts reflect the other filters.
+        $base = Post::query()
+            ->when($filters['q'] ?? null, function ($q, $term) {
+                $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $term).'%';
+                $q->where(fn ($w) => $w->where('title', 'like', $like)->orWhere('slug', 'like', $like)->orWhere('description', 'like', $like));
+            })
+            ->when($filters['category'] ?? null, fn ($q, $category) => $category === 'none'
+                ? $q->doesntHave('categories')
+                : $q->whereHas('categories', fn ($c) => $c->whereKey((int) $category)))
+            ->when(isset($filters['featured']), fn ($q) => $q->where('is_featured', (bool) $filters['featured']))
+            ->when($filters['image'] ?? null, fn ($q, $image) => $image === 'with' ? $q->whereNotNull('image') : $q->whereNull('image'))
+            ->when($filters['author'] ?? null, fn ($q, $author) => $q->where('user_id', $author))
+            ->when($filters['from'] ?? null, fn ($q, $from) => $q->whereDate('created_at', '>=', $from))
+            ->when($filters['to'] ?? null, fn ($q, $to) => $q->whereDate('created_at', '<=', $to));
+
+        $statusCounts = (clone $base)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+
+        $query = (clone $base)
+            ->with(['categories', 'user'])
+            ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status));
+
+        match ($filters['sort'] ?? 'newest') {
+            'oldest' => $query->oldest()->oldest('id'),
+            'updated' => $query->latest('updated_at'),
+            'views_desc' => $query->orderByDesc('views'),
+            'views_asc' => $query->orderBy('views'),
+            'title' => $query->orderBy('title'),
+            default => $query->latest()->latest('id'),
+        };
+
+        $posts = $query->paginate((int) ($filters['per_page'] ?? 20))->withQueryString();
+
+        // Return to this exact filtered page after saving or deleting a post.
+        $request->session()->put('admin.posts.index_url', $request->fullUrl());
+
+        return view('admin.posts.index', [
+            'posts' => $posts,
+            'filters' => $filters,
+            'statusCounts' => $statusCounts,
+            'categories' => Category::withCount('posts')->orderBy('name')->get(),
+            'authors' => User::whereIn('id', Post::whereNotNull('user_id')->distinct()->pluck('user_id'))->orderBy('name')->get(['id', 'name']),
+            'sorts' => self::SORTS,
+            'activeFilterCount' => collect($filters)->except(['sort', 'per_page', 'status'])->filter(fn ($v) => $v !== null && $v !== '')->count(),
+        ]);
+    }
+
+    /** The list page the admin came from, keeping their filters. */
+    protected function backToIndex(): RedirectResponse
+    {
+        return redirect(session('admin.posts.index_url', route('admin.posts.index')));
     }
 
     public function create(): View
@@ -46,7 +118,7 @@ class PostController extends Controller
 
         $this->storeGalleryImages($request, $post);
 
-        return redirect()->route('admin.posts.index')->with('status', 'Đã tạo bài viết.');
+        return $this->backToIndex()->with('status', 'Đã tạo bài viết.');
     }
 
     public function edit(Post $post): View
@@ -80,14 +152,14 @@ class PostController extends Controller
 
         $this->storeGalleryImages($request, $post);
 
-        return redirect()->route('admin.posts.index')->with('status', 'Đã cập nhật bài viết.');
+        return $this->backToIndex()->with('status', 'Đã cập nhật bài viết.');
     }
 
     public function destroy(Post $post): RedirectResponse
     {
         $post->delete();
 
-        return redirect()->route('admin.posts.index')->with('status', 'Đã xoá bài viết.');
+        return $this->backToIndex()->with('status', 'Đã xoá bài viết.');
     }
 
     public function destroyImage(Post $post, PostImage $image): RedirectResponse

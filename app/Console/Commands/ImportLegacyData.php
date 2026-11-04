@@ -12,6 +12,7 @@ use App\Models\Post;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,21 +27,46 @@ class ImportLegacyData extends Command
 
     protected array $slugsByReference = [];
 
+    /** Legacy user id => new user id (legacy ids can collide with accounts created since). */
+    protected array $userMap = [];
+
     public function handle(): int
     {
         $this->legacyStoragePath = rtrim(env('LEGACY_STORAGE_PATH'), '/');
 
+        // Not idempotent: refuse to run twice instead of duplicating everything.
+        $existing = array_filter([
+            'bài viết' => Post::count(),
+            'danh mục' => Category::count(),
+            'chứng chỉ' => Certificate::count(),
+            'trang tĩnh' => Page::count(),
+        ]);
+        if ($existing) {
+            $this->error('Đã có dữ liệu ('.collect($existing)->map(fn ($n, $k) => "$n $k")->implode(', ').'). Dừng lại để tránh nhân đôi.');
+
+            return self::FAILURE;
+        }
+
+        if (! is_dir($this->legacyStoragePath)) {
+            $this->warn("Không tìm thấy thư mục ảnh cũ ({$this->legacyStoragePath}); bài viết sẽ được nhập không kèm ảnh.");
+        }
+
         $this->loadLegacySlugs();
 
-        $this->importUsers();
+        // All or nothing: a failure part-way leaves the database untouched.
+        // Unguarded so the legacy created_at/updated_at are kept instead of "now"
+        // (they aren't in the models' $fillable).
+        Model::unguarded(fn () => DB::transaction(function () {
+            $this->importUsers();
 
-        $categoryMap = $this->importCategories();
-        $this->importPosts($categoryMap);
-        $studentMap = $this->importStudents();
-        $this->importCertificates($studentMap);
-        $this->importGalleries();
-        $this->importPages();
-        $this->importContacts();
+            $categoryMap = $this->importCategories();
+            $this->importPosts($categoryMap);
+            $studentMap = $this->importStudents();
+            $this->importCertificates($studentMap);
+            $this->importGalleries();
+            $this->importPages();
+            $this->importContacts();
+        }));
 
         $this->info('Import hoàn tất.');
 
@@ -83,21 +109,29 @@ class ImportLegacyData extends Command
     {
         $rows = DB::connection('legacy')->table('users')->where('super_user', 1)->get();
 
+        $created = 0;
+
         foreach ($rows as $row) {
-            User::updateOrCreate(
-                ['id' => $row->id],
-                [
+            // Match by email and never modify an account that already exists here.
+            $user = User::where('email', $row->email)->first();
+
+            if (! $user) {
+                $user = new User;
+                $user->forceFill([
                     'name' => trim("{$row->first_name} {$row->last_name}") ?: $row->username,
                     'email' => $row->email,
                     'password' => $row->password,
                     'is_admin' => true,
                     'created_at' => $row->created_at,
                     'updated_at' => $row->updated_at,
-                ]
-            );
+                ])->save();
+                $created++;
+            }
+
+            $this->userMap[$row->id] = $user->id;
         }
 
-        $this->info("Đã import {$rows->count()} tài khoản quản trị.");
+        $this->info("Tài khoản quản trị cũ: thêm mới {$created}, giữ nguyên ".($rows->count() - $created).' tài khoản đã có.');
     }
 
     protected function importCategories(): array
@@ -140,8 +174,7 @@ class ImportLegacyData extends Command
             $image = $this->copyFile($row->image, 'posts');
 
             $post = Post::create([
-                'id' => $row->id,
-                'user_id' => User::find($row->author_id) ? $row->author_id : null,
+                'user_id' => $this->userMap[$row->author_id] ?? null,
                 'title' => $row->name,
                 'slug' => $this->slugFor('Platform\\Blog\\Models\\Post', $row->id, $row->name),
                 'description' => $row->description,
@@ -265,7 +298,7 @@ class ImportLegacyData extends Command
 
         foreach ($rows as $row) {
             Gallery::create([
-                'user_id' => User::find($row->user_id) ? $row->user_id : null,
+                'user_id' => $this->userMap[$row->user_id] ?? null,
                 'name' => $row->name,
                 'slug' => Str::slug($row->name).'-'.$row->id,
                 'description' => $row->description,
@@ -287,7 +320,7 @@ class ImportLegacyData extends Command
 
         foreach ($rows as $row) {
             Page::create([
-                'user_id' => User::find($row->user_id) ? $row->user_id : null,
+                'user_id' => $this->userMap[$row->user_id] ?? null,
                 'title' => $row->name,
                 'slug' => $this->slugFor('Platform\\Page\\Models\\Page', $row->id, $row->name),
                 'description' => $row->description,

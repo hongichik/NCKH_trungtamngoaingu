@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Support\DbSync\DatabaseSync;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 
@@ -45,21 +47,43 @@ class DbSyncPush extends Command
             return self::SUCCESS;
         }
 
-        $this->line('Đang xuất dữ liệu...');
-        $body = $sync->export($tables);
-        $this->line('Kích thước payload (gzip): <info>'.number_format(strlen($body) / 1024, 1).' KB</info>');
+        $id = bin2hex(random_bytes(16));
+        $tmp = storage_path('app/db-sync-tmp/'.$id);
 
-        $this->line('Đang gửi lên máy chủ...');
-        $response = Http::withToken($token)
-            ->timeout((int) config('dbsync.http_timeout', 300))
-            ->acceptJson()
-            ->withBody($body, 'application/gzip')
-            ->post($url.'/api/db-sync/import?migrate='.($this->option('no-migrate') ? 0 : 1));
+        try {
+            $this->line('Đang xuất dữ liệu...');
+            $parts = $sync->exportToParts($tables, $tmp, (int) config('dbsync.part_bytes'));
+            $total = array_sum(array_map('filesize', $parts));
+            $this->line(sprintf('Đã đóng gói: <info>%d phần, %s KB</info> (gzip)', count($parts), number_format($total / 1024, 1)));
 
-        $json = $response->json() ?? [];
+            $bar = $this->output->createProgressBar(count($parts));
+            $bar->start();
+            foreach ($parts as $i => $part) {
+                $res = $this->client($token)
+                    ->retry(3, 2000, throw: false)
+                    ->withBody(file_get_contents($part), 'application/gzip')
+                    ->post("{$url}/api/db-sync/chunk?id={$id}&seq=".($i + 1));
 
-        if (! $response->successful() || ! ($json['ok'] ?? false)) {
-            $this->error("Thất bại (HTTP {$response->status()}): ".($json['message'] ?? substr($response->body(), 0, 500)));
+                if (! $res->successful() || ! $res->json('ok')) {
+                    $bar->clear();
+                    $this->fail('Gửi phần '.($i + 1)." thất bại (HTTP {$res->status()}): ".$this->message($res));
+                }
+                $bar->advance();
+            }
+            $bar->finish();
+            $this->newLine();
+
+            $this->line('Máy chủ đang nhập dữ liệu...');
+            $res = $this->client($token)
+                ->post("{$url}/api/db-sync/commit?id={$id}&migrate=".($this->option('no-migrate') ? 0 : 1));
+        } finally {
+            File::deleteDirectory($tmp);
+        }
+
+        $json = $res->json() ?? [];
+
+        if (! $res->successful() || ! ($json['ok'] ?? false)) {
+            $this->error("Thất bại (HTTP {$res->status()}): ".$this->message($res));
             foreach ($json['missing_migrations'] ?? [] as $m) {
                 $this->line("  - thiếu migration: {$m}");
             }
@@ -80,5 +104,17 @@ class DbSyncPush extends Command
         $this->info('Đồng bộ thành công. Bản sao lưu trên máy chủ: '.($json['backup'] ?? '-'));
 
         return self::SUCCESS;
+    }
+
+    private function client(string $token): PendingRequest
+    {
+        return Http::withToken($token)
+            ->timeout((int) config('dbsync.http_timeout', 300))
+            ->acceptJson();
+    }
+
+    private function message($res): string
+    {
+        return $res->json('message') ?? mb_substr(strip_tags($res->body()), 0, 300);
     }
 }

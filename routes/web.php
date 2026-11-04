@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ExamController as AdminExamController;
 use App\Http\Controllers\Admin\ExamRegistrationController as AdminExamRegistrationController;
 use App\Http\Controllers\Admin\GalleryController as AdminGalleryController;
 use App\Http\Controllers\Admin\MaintenanceController;
+use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PostController;
@@ -238,6 +239,20 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
         // Runs `php artisan storage:link` for hosting without SSH access.
         Route::get('storage-link', [MaintenanceController::class, 'storageLink'])->name('storage-link');
+    });
+
+    // Quản trị hệ thống -- chỉ chủ hệ thống (users.id = 1).
+    Route::prefix('system')->name('system.')->middleware('owner')->group(function () {
+        Route::get('/', [SystemController::class, 'index'])->name('index');
+        Route::post('config', [SystemController::class, 'updateConfig'])->name('config');
+        Route::post('sync', [SystemController::class, 'updateSync'])->name('sync');
+        Route::post('token', [SystemController::class, 'regenerateToken'])->name('token');
+        Route::post('command', [SystemController::class, 'runCommand'])->name('command');
+        Route::post('backups', [SystemController::class, 'backupCreate'])->name('backups.create');
+        Route::post('backups/upload', [SystemController::class, 'backupUpload'])->name('backups.upload');
+        Route::get('backups/{name}', [SystemController::class, 'backupDownload'])->name('backups.download');
+        Route::post('backups/{name}/restore', [SystemController::class, 'backupRestore'])->name('backups.restore');
+        Route::delete('backups/{name}', [SystemController::class, 'backupDelete'])->name('backups.delete');
     });
 });
 

@@ -32,6 +32,17 @@
                             <label class="form-label">Nhập lại mật khẩu</label>
                             <input type="password" name="password_confirmation" class="form-control" {{ $user->exists ? '' : 'required' }}>
                         </div>
+
+                        @if ($user->isOwner())
+                            <div class="alert alert-info mb-0"><i class="ti ti-crown me-1"></i>Tài khoản <strong>chủ hệ thống</strong> — luôn có toàn quyền, không thể hạ quyền hay xoá.</div>
+                        @elseif (auth()->user()->isOwner())
+                            <label class="form-check form-switch">
+                                <input type="hidden" name="is_admin" value="0">
+                                <input class="form-check-input" type="checkbox" name="is_admin" value="1" @checked(old('is_admin', $user->is_admin))>
+                                <span class="form-check-label fw-semibold">Admin cao nhất (toàn quyền nội dung)</span>
+                            </label>
+                            <div class="form-hint">Có mọi quyền quản trị nội dung và quản lý tài khoản thường. Chỉ chủ hệ thống mới cấp/thu hồi được quyền này. Khi bật, bảng phân quyền bên cạnh không còn tác dụng.</div>
+                        @endif
                     </div>
                 </div>
             </div>

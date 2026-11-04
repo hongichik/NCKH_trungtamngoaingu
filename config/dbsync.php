@@ -1,5 +1,10 @@
 <?php
 
+/*
+| Các giá trị DB_SYNC_* có thể sửa trực tiếp trong .env hoặc từ
+| Admin > Quản trị hệ thống > Đồng bộ (chỉ chủ hệ thống).
+*/
+
 return [
 
     /*
@@ -8,16 +13,24 @@ return [
     |--------------------------------------------------------------------------
     | Chuỗi bí mật dùng chung giữa máy local và máy chủ. Phải giống nhau ở cả
     | hai nơi. Nếu để trống, API đồng bộ sẽ bị tắt hoàn toàn (trả về 404).
-    | Tạo token: php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
     */
     'token' => env('DB_SYNC_TOKEN'),
+
+    // Cho phép máy khác đẩy / kéo CSDL qua API.
+    'enabled' => (bool) env('DB_SYNC_ENABLED', true),
+
+    // Cho phép máy khác đẩy / kéo file trong các thư mục bên dưới qua API.
+    'files_enabled' => (bool) env('DB_SYNC_FILES_ENABLED', false),
+
+    // Thư mục được đồng bộ file (tính từ thư mục gốc dự án, cách nhau bởi dấu phẩy).
+    // Chỉ chấp nhận thư mục nằm trong storage/app/ hoặc public/.
+    'file_dirs' => array_values(array_filter(array_map('trim', explode(',', (string) env('DB_SYNC_FILE_DIRS', 'storage/app/public'))))),
 
     /*
     |--------------------------------------------------------------------------
     | Địa chỉ máy chủ đích
     |--------------------------------------------------------------------------
-    | Dùng ở máy local khi chạy `php artisan db:sync-push` / `db:sync-pull`.
-    | Ví dụ: https://ngoaingu.example.com
+    | Dùng ở máy local khi chạy các lệnh db:sync-* / files:sync-*.
     */
     'remote_url' => env('DB_SYNC_REMOTE_URL'),
 
@@ -26,8 +39,9 @@ return [
     | Các bảng không bao giờ đồng bộ
     |--------------------------------------------------------------------------
     | Bảng hệ thống / dữ liệu tạm thời, mang tính riêng của từng máy.
+    | Có thể thêm bảng qua DB_SYNC_EXCLUDE (cách nhau bởi dấu phẩy).
     */
-    'excluded_tables' => [
+    'excluded_tables' => array_values(array_unique(array_merge([
         'migrations',
         'sessions',
         'cache',
@@ -36,7 +50,7 @@ return [
         'job_batches',
         'failed_jobs',
         'password_reset_tokens',
-    ],
+    ], array_filter(array_map('trim', explode(',', (string) env('DB_SYNC_EXCLUDE', ''))))))),
 
     /*
     |--------------------------------------------------------------------------
@@ -49,6 +63,10 @@ return [
 
     // Số dòng mỗi lần insert.
     'chunk_size' => 500,
+
+    // Khi đẩy lên máy chủ, dữ liệu được chia thành nhiều request, mỗi phần
+    // khoảng chừng này byte trước khi nén (sau gzip thường nhỏ hơn 5–10 lần).
+    'part_bytes' => (int) env('DB_SYNC_PART_BYTES', 4 * 1024 * 1024),
 
     // Thời gian chờ tối đa (giây) cho request HTTP từ lệnh artisan.
     'http_timeout' => (int) env('DB_SYNC_HTTP_TIMEOUT', 300),

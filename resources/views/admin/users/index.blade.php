@@ -24,7 +24,9 @@
                             <td>{{ $user->name }}</td>
                             <td class="text-muted">{{ $user->email }}</td>
                             <td>
-                                @if ($user->is_admin)
+                                @if ($user->isOwner())
+                                    <span class="badge bg-yellow text-white"><i class="ti ti-crown me-1"></i>Chủ hệ thống</span>
+                                @elseif ($user->is_admin)
                                     <span class="badge bg-primary text-white">Admin cao nhất</span>
                                 @else
                                     <span class="badge bg-secondary-lt">Tài khoản thường</span>
@@ -39,15 +41,15 @@
                             </td>
                             <td class="text-muted">{{ $user->created_at->format('d/m/Y') }}</td>
                             <td class="text-nowrap">
-                                @unless ($user->is_admin)
-                                    <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary">Sửa quyền</a>
-                                    @if ($user->id !== auth()->id())
+                                @if (! $user->is_admin || auth()->user()->isOwner())
+                                    <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
+                                    @if ($user->id !== auth()->id() && ! $user->isOwner())
                                         <form method="POST" action="{{ route('admin.users.destroy', $user) }}" class="d-inline" onsubmit="return confirm('Xoá tài khoản này?')">
                                             @csrf @method('DELETE')
                                             <button class="btn btn-sm btn-outline-danger">Xoá</button>
                                         </form>
                                     @endif
-                                @endunless
+                                @endif
                             </td>
                         </tr>
                     @endforeach

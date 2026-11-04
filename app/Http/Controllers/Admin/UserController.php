@@ -40,7 +40,7 @@ class UserController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
-            'is_admin' => false,
+            'is_admin' => $this->actorIsOwner() && $request->boolean('is_admin'),
         ]);
 
         $user->permissions()->sync($data['permissions'] ?? []);
@@ -71,6 +71,8 @@ class UserController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             ...(filled($data['password'] ?? null) ? ['password' => Hash::make($data['password'])] : []),
+            // Chỉ chủ hệ thống được cấp / thu hồi quyền admin cao nhất. Tài khoản chủ hệ thống luôn là admin.
+            ...($this->actorIsOwner() ? ['is_admin' => $user->isOwner() || $request->boolean('is_admin')] : []),
         ]);
 
         $user->permissions()->sync($data['permissions'] ?? []);
@@ -82,6 +84,10 @@ class UserController extends Controller
     {
         $this->preventEditingSuperAdmin($user);
 
+        if ($user->isOwner()) {
+            throw ValidationException::withMessages(['user' => 'Không thể xoá tài khoản chủ hệ thống.']);
+        }
+
         if ($user->id === auth()->id()) {
             throw ValidationException::withMessages(['user' => 'Không thể xoá chính tài khoản đang đăng nhập.']);
         }
@@ -91,11 +97,19 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('status', 'Đã xoá tài khoản.');
     }
 
+    /**
+     * Admin cao nhất chỉ sửa được tài khoản thường. Chủ hệ thống (id 1) sửa được mọi tài khoản.
+     */
     protected function preventEditingSuperAdmin(User $user): void
     {
-        if ($user->is_admin) {
-            abort(403, 'Không thể chỉnh sửa tài khoản admin cao nhất.');
+        if ($user->is_admin && ! $this->actorIsOwner()) {
+            abort(403, 'Chỉ chủ hệ thống mới chỉnh sửa được tài khoản admin cao nhất.');
         }
+    }
+
+    protected function actorIsOwner(): bool
+    {
+        return (bool) auth()->user()?->isOwner();
     }
 
     protected function validateData(Request $request, ?User $user = null): array
@@ -106,6 +120,7 @@ class UserController extends Controller
             'password' => [$user ? 'nullable' : 'required', 'string', 'min:6', 'confirmed'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['integer', Rule::exists('permissions', 'id')],
+            'is_admin' => ['nullable', 'boolean'],
         ]);
 
         return $data;

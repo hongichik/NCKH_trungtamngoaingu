@@ -14,6 +14,40 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * Tài khoản id = 1 là chủ hệ thống: toàn quyền, vào được trang Quản trị hệ thống,
+     * chỉnh sửa được mọi tài khoản. Không thể bị xoá hay hạ quyền.
+     */
+    public const OWNER_ID = 1;
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user) {
+            if ($user->isOwner()) {
+                $user->is_admin = true;
+            }
+        });
+
+        // Lúc tạo mới, id chưa có trong "saving" nên kiểm tra lại sau khi tạo.
+        static::created(function (User $user) {
+            if ($user->isOwner() && ! $user->is_admin) {
+                $user->is_admin = true;
+                $user->saveQuietly();
+            }
+        });
+
+        static::deleting(function (User $user) {
+            if ($user->isOwner()) {
+                throw new \LogicException('Không thể xoá tài khoản chủ hệ thống.');
+            }
+        });
+    }
+
+    public function isOwner(): bool
+    {
+        return (int) $this->getKey() === self::OWNER_ID;
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -60,7 +94,7 @@ class User extends Authenticatable
      */
     public function hasPermission(string $module, string $action): bool
     {
-        if ($this->is_admin) {
+        if ($this->is_admin || $this->isOwner()) {
             return true;
         }
 
@@ -71,7 +105,7 @@ class User extends Authenticatable
 
     public function hasAnyPermissionFor(string $module): bool
     {
-        if ($this->is_admin) {
+        if ($this->is_admin || $this->isOwner()) {
             return true;
         }
 

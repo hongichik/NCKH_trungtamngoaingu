@@ -193,6 +193,15 @@
                             </a>
                         </li>
                     @endif
+
+                    @if ($user->isOwner())
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.system.*') ? 'active' : '' }}" href="{{ route('admin.system.index') }}">
+                                <span class="nav-link-icon"><i class="ti ti-settings-cog"></i></span>
+                                <span class="nav-link-title">Quản trị hệ thống</span>
+                            </a>
+                        </li>
+                    @endif
                 </ul>
             </div>
         </div>
