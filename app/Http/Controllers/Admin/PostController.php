@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\PostImage;
-use Illuminate\Http\JsonResponse;
+use App\Support\ImageOptimizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -38,7 +38,7 @@ class PostController extends Controller
         $data['user_id'] = $request->user()->id;
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('posts', 'public');
+            $data['image'] = ImageOptimizer::store($request->file('image'), 'posts');
         }
 
         $post = Post::create($data);
@@ -72,7 +72,7 @@ class PostController extends Controller
             if ($post->image) {
                 Storage::disk('public')->delete($post->image);
             }
-            $data['image'] = $request->file('image')->store('posts', 'public');
+            $data['image'] = ImageOptimizer::store($request->file('image'), 'posts');
         }
 
         $post->update($data);
@@ -90,27 +90,6 @@ class PostController extends Controller
         return redirect()->route('admin.posts.index')->with('status', 'Đã xoá bài viết.');
     }
 
-    /**
-     * Upload an image dropped/pasted/inserted into the content editor and
-     * return its public URL, so the editor stores a link instead of
-     * embedding the image as base64.
-     */
-    public function uploadImage(Request $request): JsonResponse
-    {
-        abort_unless(
-            $request->user()->hasPermission('posts', 'create') || $request->user()->hasPermission('posts', 'edit'),
-            403
-        );
-
-        $request->validate([
-            'image' => ['required', 'image', 'max:4096'],
-        ]);
-
-        $path = $request->file('image')->store('posts', 'public');
-
-        return response()->json(['url' => Storage::url($path)]);
-    }
-
     public function destroyImage(Post $post, PostImage $image): RedirectResponse
     {
         abort_unless($image->post_id === $post->id, 404);
@@ -124,7 +103,7 @@ class PostController extends Controller
     protected function storeGalleryImages(Request $request, Post $post): void
     {
         foreach ($request->file('gallery_images', []) as $file) {
-            $post->images()->create(['image' => $file->store('posts', 'public')]);
+            $post->images()->create(['image' => ImageOptimizer::store($file, 'posts')]);
         }
     }
 
@@ -138,8 +117,8 @@ class PostController extends Controller
             ],
             'description' => ['nullable', 'string', 'max:400'],
             'content' => ['nullable', 'string'],
-            'image' => ['nullable', 'image', 'max:4096'],
-            'gallery_images.*' => ['nullable', 'image', 'max:4096'],
+            'image' => ['nullable', 'image', 'max:10240'],
+            'gallery_images.*' => ['nullable', 'image', 'max:10240'],
             'is_featured' => ['sometimes', 'boolean'],
             'status' => ['required', 'in:published,draft'],
         ]);

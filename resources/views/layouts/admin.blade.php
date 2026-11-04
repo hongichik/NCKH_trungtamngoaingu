@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Quản trị') - {{ config('app.name') }}</title>
     <link href="{{ asset('vendor/tabler/css/tabler.min.css') }}" rel="stylesheet">
     <link href="{{ asset('vendor/tabler-icons/tabler-icons.min.css') }}" rel="stylesheet">
@@ -46,11 +47,13 @@
                     </li>
                     @php
                         $user = auth()->user();
-                        $inContentGroup = request()->routeIs(['admin.posts.*', 'admin.categories.*', 'admin.pages.*', 'admin.galleries.*', 'admin.menus.*']);
+                        $inContentGroup = request()->routeIs(['admin.posts.*', 'admin.categories.*', 'admin.pages.*', 'admin.galleries.*']);
                         $inStudentsGroup = request()->routeIs(['admin.students.*', 'admin.certificates.*']);
                         $inHskGroup = request()->routeIs(['admin.exams.*', 'admin.exam-registrations.*']) && request('type', 'hsk') !== 'cntt';
                         $inCnttGroup = request()->routeIs(['admin.exams.*', 'admin.exam-registrations.*']) && request('type') === 'cntt';
-                        $showContentGroup = $user->hasAnyPermissionFor('posts') || $user->hasAnyPermissionFor('categories') || $user->hasAnyPermissionFor('pages') || $user->hasAnyPermissionFor('galleries') || $user->hasAnyPermissionFor('menus');
+                        $showContentGroup = $user->hasAnyPermissionFor('posts') || $user->hasAnyPermissionFor('categories') || $user->hasAnyPermissionFor('pages') || $user->hasAnyPermissionFor('galleries');
+                        $inSiteGroup = request()->routeIs(['admin.menus.*', 'admin.banners.*', 'admin.settings.*']);
+                        $showSiteGroup = $user->hasAnyPermissionFor('menus') || $user->hasAnyPermissionFor('banners') || $user->hasAnyPermissionFor('settings');
                         $showStudentsGroup = $user->hasAnyPermissionFor('students') || $user->hasAnyPermissionFor('certificates');
                         $showExamGroups = $user->hasAnyPermissionFor('exams') || $user->hasAnyPermissionFor('exam_registrations');
                     @endphp
@@ -82,9 +85,30 @@
                                         <i class="ti ti-photo me-2"></i>Thư viện ảnh
                                     </a>
                                 @endif
+                            </div>
+                        </li>
+                    @endif
+
+                    @if ($showSiteGroup)
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {{ $inSiteGroup ? 'active' : '' }}" href="#nav-site" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ $inSiteGroup ? 'true' : 'false' }}">
+                                <span class="nav-link-icon"><i class="ti ti-palette"></i></span>
+                                <span class="nav-link-title">Giao diện website</span>
+                            </a>
+                            <div class="dropdown-menu {{ $inSiteGroup ? 'show' : '' }}">
+                                @if ($user->hasAnyPermissionFor('banners'))
+                                    <a class="dropdown-item {{ request()->routeIs('admin.banners.*') ? 'active' : '' }}" href="{{ route('admin.banners.index') }}">
+                                        <i class="ti ti-slideshow me-2"></i>Banner trang chủ
+                                    </a>
+                                @endif
                                 @if ($user->hasAnyPermissionFor('menus'))
                                     <a class="dropdown-item {{ request()->routeIs('admin.menus.*') ? 'active' : '' }}" href="{{ route('admin.menus.index') }}">
                                         <i class="ti ti-menu-2 me-2"></i>Menu website
+                                    </a>
+                                @endif
+                                @if ($user->hasAnyPermissionFor('settings'))
+                                    <a class="dropdown-item {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.edit') }}">
+                                        <i class="ti ti-settings me-2"></i>Cài đặt website
                                     </a>
                                 @endif
                             </div>

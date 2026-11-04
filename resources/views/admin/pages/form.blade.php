@@ -3,7 +3,7 @@
 @section('title', $page->exists ? 'Sửa trang' : 'Thêm trang')
 
 @section('content')
-    <form method="POST" action="{{ $page->exists ? route('admin.pages.update', $page) : route('admin.pages.store') }}" enctype="multipart/form-data" style="max-width: 800px;">
+    <form method="POST" action="{{ $page->exists ? route('admin.pages.update', $page) : route('admin.pages.store') }}" enctype="multipart/form-data" style="max-width: 1000px;">
         @csrf
         {{-- No @method('PUT'): this form has file inputs, and PHP silently drops
              multipart fields (including _token) on a spoofed PUT request. --}}
@@ -20,15 +20,17 @@
 
         <div class="mb-3">
             <label class="form-label">Nội dung</label>
-            <textarea name="content" class="form-control" rows="10">{{ old('content', $page->content) }}</textarea>
+            <textarea name="content" class="form-control" rows="10" data-rich-editor data-upload-url="{{ route('admin.editor.upload') }}">{{ old('content', $page->content) }}</textarea>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Ảnh đại diện</label>
-            <input type="file" name="image" class="form-control">
-            @if ($page->image)
-                <img src="{{ Storage::url($page->image) }}" class="mt-2" style="max-height: 100px;">
-            @endif
+        <div style="max-width: 480px;">
+            @include('admin.partials.image-field', [
+                'name' => 'image',
+                'label' => 'Ảnh đại diện',
+                'currentUrl' => $page->image ? Storage::url($page->image) : null,
+                'aspect' => 16 / 9,
+                'removeName' => 'remove_image',
+            ])
         </div>
 
         <div class="mb-3">
@@ -42,3 +44,5 @@
         <button class="btn btn-primary">Lưu</button>
     </form>
 @endsection
+
+@include('admin.partials.rich-editor-assets')

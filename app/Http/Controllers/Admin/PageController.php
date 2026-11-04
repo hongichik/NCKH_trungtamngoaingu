@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Support\ImageOptimizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -30,7 +32,7 @@ class PageController extends Controller
         $data['user_id'] = $request->user()->id;
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('pages', 'public');
+            $data['image'] = ImageOptimizer::store($request->file('image'), 'pages');
         }
 
         Page::create($data);
@@ -51,8 +53,16 @@ class PageController extends Controller
             $data['slug'] = $this->uniqueSlug($data['title'], $page->id);
         }
 
+        if ($request->boolean('remove_image') && $page->image) {
+            Storage::disk('public')->delete($page->image);
+            $data['image'] = null;
+        }
+
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('pages', 'public');
+            if ($page->image) {
+                Storage::disk('public')->delete($page->image);
+            }
+            $data['image'] = ImageOptimizer::store($request->file('image'), 'pages');
         }
 
         $page->update($data);
@@ -73,7 +83,7 @@ class PageController extends Controller
             'title' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:400'],
             'content' => ['nullable', 'string'],
-            'image' => ['nullable', 'image', 'max:4096'],
+            'image' => ['nullable', 'image', 'max:10240'],
             'is_featured' => ['sometimes', 'boolean'],
             'status' => ['required', 'in:published,draft'],
         ]);

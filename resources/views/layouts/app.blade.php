@@ -6,7 +6,23 @@
 
     @php
         $pageTitle = trim(($__env->yieldContent('title') ?: 'Trang chủ') . ' - ' . config('app.name'));
-        $metaDescription = $__env->yieldContent('meta_description') ?: 'Trung tâm Ngoại ngữ - Tin học: đào tạo, luyện thi và cấp chứng chỉ ngoại ngữ, tin học uy tín. Tra cứu chứng chỉ trực tuyến nhanh chóng, chính xác.';
+        $metaDescription = $__env->yieldContent('meta_description') ?: setting('meta_description', config('app.name'));
+        $settingUrl = fn ($key, $fallback) => setting($key) ? Storage::url(setting($key)) : asset($fallback);
+        $logoUrl = $settingUrl('logo', 'images/logo.jpg');
+        $logoFooterUrl = $settingUrl('logo_footer', 'images/logo-mark.png');
+        $faviconUrl = $settingUrl('favicon', 'images/favicon.png');
+        $brandColor = setting('color_brand', '#0a4a75');
+        $accentColor = setting('color_accent', '#ef5823');
+        $parentOrg = setting('parent_org_name');
+        $parentOrgUrl = setting('parent_org_url');
+        $contactStaff = setting('contact_staff', config('site.contact.staff', []));
+        $zalo = setting('social_zalo');
+        $zaloUrl = $zalo && ! str_starts_with($zalo, 'http') ? 'https://zalo.me/'.preg_replace('/\D/', '', $zalo) : $zalo;
+        $socials = array_filter([
+            'facebook' => setting('social_facebook'),
+            'youtube' => setting('social_youtube'),
+            'zalo' => $zaloUrl,
+        ]);
         $ogImage = $__env->yieldContent('og_image') ?: null;
     @endphp
 
@@ -14,10 +30,10 @@
     <meta name="description" content="{{ Str::limit(strip_tags($metaDescription), 160, '') }}">
     <link rel="canonical" href="{{ url()->current() }}">
     <meta name="robots" content="index, follow">
-    <meta name="theme-color" content="#0a4a75">
+    <meta name="theme-color" content="{{ $brandColor }}">
 
-    <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ $faviconUrl }}">
+    <link rel="apple-touch-icon" href="{{ setting('favicon') ? $faviconUrl : asset('images/apple-touch-icon.png') }}">
 
     {{-- Open Graph / Twitter --}}
     <meta property="og:site_name" content="{{ config('app.name') }}">
@@ -59,13 +75,12 @@
                     '@id' => url('/#organization'),
                     'name' => config('app.name'),
                     'url' => url('/'),
-                    'logo' => asset('images/logo-mark.png'),
-                    'parentOrganization' => [
-                        '@type' => 'CollegeOrUniversity',
-                        'name' => 'Trường Đại học Hạ Long',
-                        'url' => 'https://uhl.edu.vn/',
-                    ],
-                ],
+                    'logo' => $logoFooterUrl,
+                ] + ($parentOrg ? ['parentOrganization' => array_filter([
+                    '@type' => 'CollegeOrUniversity',
+                    'name' => $parentOrg,
+                    'url' => $parentOrgUrl,
+                ])] : []),
                 [
                     '@type' => 'WebSite',
                     '@id' => url('/#website'),
@@ -81,10 +96,11 @@
     <style>
         :root {
             /* Sampled from the center's official emblem (navy ring + orange accent) */
-            --brand: #0a4a75;
-            --brand-dark: #073657;
-            --accent: #ef5823;
-            --accent-dark: #cc4415;
+            /* Editable in Admin > Cài đặt website; darker shades are derived automatically. */
+            --brand: {{ $brandColor }};
+            --brand-dark: color-mix(in srgb, {{ $brandColor }} 78%, #000);
+            --accent: {{ $accentColor }};
+            --accent-dark: color-mix(in srgb, {{ $accentColor }} 85%, #000);
             --ink: #101828;
         }
         body {
@@ -105,6 +121,7 @@
             background-position: center;
             background-color: var(--brand);
         }
+        .hero-slide-bg, .hero-slide-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
         .hero-slide-overlay {
             position: absolute;
             inset: 0;
@@ -162,6 +179,12 @@
         footer.site-footer a:hover { color: #fff; }
         footer.site-footer h6 { color: #fff; font-weight: 700; }
         footer.site-footer img { height: 40px; width: auto; }
+        .footer-social {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 2.2rem; height: 2.2rem; padding: 0 .5rem; border-radius: 50%;
+            background: rgba(255, 255, 255, .1); color: #fff !important;
+        }
+        .footer-social:hover { background: var(--accent); }
         .footer-logo-badge {
             background: #fff;
             border-radius: .6rem;
@@ -212,7 +235,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
         <div class="container">
             <a class="navbar-brand" href="{{ route('home') }}">
-                <img src="{{ asset('images/logo.jpg') }}" alt="{{ config('app.name') }} - trực thuộc Trường Đại học Hạ Long" width="611" height="97">
+                <img src="{{ $logoUrl }}" alt="{{ config('app.name') }}{{ $parentOrg ? ' - trực thuộc '.$parentOrg : '' }}" @unless (setting('logo')) width="611" height="97" @endunless>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-label="Mở menu">
                 <span class="navbar-toggler-icon"></span>
@@ -253,10 +276,23 @@
             <div class="row g-4">
                 <div class="col-lg-4">
                     <span class="footer-logo-badge d-inline-block mb-3">
-                        <img src="{{ asset('images/logo-mark.png') }}" alt="{{ config('app.name') }}" loading="lazy">
+                        <img src="{{ $logoFooterUrl }}" alt="{{ config('app.name') }}" loading="lazy">
                     </span>
-                    <p class="mb-1 small">Đào tạo, luyện thi và cấp chứng chỉ ngoại ngữ - tin học. Đồng hành cùng học viên trên hành trình chinh phục chứng chỉ.</p>
-                    <p class="mb-0 small">Trực thuộc <a href="https://uhl.edu.vn/" target="_blank" rel="noopener">Trường Đại học Hạ Long</a>.</p>
+                    @if (setting('site_intro'))
+                        <p class="mb-1 small">{{ setting('site_intro') }}</p>
+                    @endif
+                    @if ($parentOrg)
+                        <p class="mb-0 small">Trực thuộc @if ($parentOrgUrl)<a href="{{ $parentOrgUrl }}" target="_blank" rel="noopener">{{ $parentOrg }}</a>@else{{ $parentOrg }}@endif.</p>
+                    @endif
+                    @if ($socials)
+                        <div class="d-flex gap-2 mt-3">
+                            @foreach ($socials as $network => $url)
+                                <a href="{{ $url }}" target="_blank" rel="noopener" class="footer-social" aria-label="{{ ucfirst($network) }}">
+                                    @if ($network === 'zalo')<span class="fw-bold small">Zalo</span>@else<i class="bi bi-{{ $network }}"></i>@endif
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
                 <div class="col-6 col-lg-2">
                     <h6>Khám phá</h6>
@@ -276,9 +312,12 @@
                 </div>
                 <div class="col-lg-4">
                     <h6>Liên hệ</h6>
-                    <p class="mb-2 small"><i class="bi bi-geo-alt me-1"></i>{{ config('site.contact.address') }}</p>
-                    @foreach (config('site.contact.staff') as $staff)
-                        <p class="mb-2 small">{{ $staff['name'] }}: <a href="tel:{{ $staff['phone'] }}">{{ $staff['phone'] }}</a></p>
+                    <p class="mb-2 small"><i class="bi bi-geo-alt me-1"></i>{{ setting('contact_address', config('site.contact.address')) }}</p>
+                    @if (setting('contact_email'))
+                        <p class="mb-2 small"><i class="bi bi-envelope me-1"></i><a href="mailto:{{ setting('contact_email') }}">{{ setting('contact_email') }}</a></p>
+                    @endif
+                    @foreach ($contactStaff as $staff)
+                        <p class="mb-2 small">{{ $staff['name'] }}: <a href="tel:{{ preg_replace('/[^0-9+]/', '', $staff['phone']) }}">{{ $staff['phone'] }}</a></p>
                     @endforeach
                     <a href="{{ route('contact.create') }}" class="btn btn-sm btn-primary mt-1">Liên hệ tư vấn</a>
                 </div>

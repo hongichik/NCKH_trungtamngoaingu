@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\Page;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Schema;
@@ -27,6 +28,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        // The site name edited in Admin > Cài đặt website replaces APP_NAME everywhere.
+        Setting::flushLoaded();
+        if ($siteName = setting('site_name')) {
+            config(['app.name' => $siteName]);
+        }
 
         // Public-site menus managed in Admin > Nội dung > Menu website.
         View::composer('layouts.app', function ($view) {

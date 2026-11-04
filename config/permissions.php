@@ -20,5 +20,7 @@ return [
         'exams' => ['label' => 'Đợt thi & Lệ phí', 'actions' => ['view', 'create', 'edit', 'delete']],
         'exam_registrations' => ['label' => 'Đăng ký dự thi', 'actions' => ['view', 'edit', 'delete']],
         'menus' => ['label' => 'Menu website', 'actions' => ['view', 'create', 'edit', 'delete']],
+        'banners' => ['label' => 'Banner trang chủ', 'actions' => ['view', 'create', 'edit', 'delete']],
+        'settings' => ['label' => 'Cài đặt website', 'actions' => ['view', 'edit']],
     ],
 ];

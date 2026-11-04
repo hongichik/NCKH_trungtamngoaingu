@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Banner;
 use App\Models\Category;
 use App\Models\Certificate;
 use App\Models\Page;
@@ -25,17 +26,20 @@ class PublicController extends Controller
             ->take(8)
             ->get();
 
+        // Filtered in PHP rather than HAVING (MySQL-only without GROUP BY); categories are few.
         $newsCategories = Category::withCount(['posts as posts_count' => fn ($q) => $q->published()])
-            ->having('posts_count', '>=', 5)
-            ->orderByDesc('posts_count')
-            ->take(3)
             ->get()
+            ->where('posts_count', '>=', 5)
+            ->sortByDesc('posts_count')
+            ->take(3)
+            ->values()
             ->each(fn (Category $category) => $category->setRelation(
                 'recentPosts',
                 $category->posts()->published()->latest()->take(6)->get()
             ));
 
         return view('public.home', [
+            'banners' => Banner::visible()->get(),
             'heroPosts' => $heroPosts,
             'latestPosts' => $latestPosts,
             'newsCategories' => $newsCategories,
@@ -51,9 +55,10 @@ class PublicController extends Controller
         return view('public.blog-index', [
             'posts' => Post::published()->with('categories')->latest()->paginate(12),
             'categories' => Category::withCount(['posts as posts_count' => fn ($q) => $q->published()])
-                ->having('posts_count', '>', 0)
                 ->orderBy('name')
-                ->get(),
+                ->get()
+                ->where('posts_count', '>', 0)
+                ->values(),
         ]);
     }
 

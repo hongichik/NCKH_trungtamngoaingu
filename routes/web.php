@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CertificateController;
 use App\Http\Controllers\Admin\ContactController as AdminContactController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\EditorUploadController;
 use App\Http\Controllers\Admin\ExamController as AdminExamController;
 use App\Http\Controllers\Admin\ExamRegistrationController as AdminExamRegistrationController;
 use App\Http\Controllers\Admin\GalleryController as AdminGalleryController;
@@ -11,6 +13,7 @@ use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PostController;
+use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
@@ -68,7 +71,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('posts/create', [PostController::class, 'create'])->name('posts.create');
         Route::post('posts', [PostController::class, 'store'])->name('posts.store');
     });
-    Route::post('posts/upload-image', [PostController::class, 'uploadImage'])->name('posts.upload-image');
+    // Image uploads from the rich-text editor (posts, pages); permission checked in the controller.
+    Route::post('editor/upload-image', [EditorUploadController::class, 'store'])->name('editor.upload');
     Route::middleware('permission:posts,edit')->group(function () {
         Route::get('posts/{post}/edit', [PostController::class, 'edit'])->name('posts.edit');
         // POST, not PUT: PHP does not parse multipart/form-data bodies on a
@@ -164,6 +168,27 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('menus/{menu}/toggle', [MenuController::class, 'toggle'])->name('menus.toggle');
     });
     Route::delete('menus/{menu}', [MenuController::class, 'destroy'])->name('menus.destroy')->middleware('permission:menus,delete');
+
+    // Homepage banners
+    Route::middleware('permission:banners,view')->group(function () {
+        Route::get('banners', [BannerController::class, 'index'])->name('banners.index');
+    });
+    Route::middleware('permission:banners,create')->group(function () {
+        Route::get('banners/create', [BannerController::class, 'create'])->name('banners.create');
+        Route::post('banners', [BannerController::class, 'store'])->name('banners.store');
+    });
+    Route::middleware('permission:banners,edit')->group(function () {
+        Route::post('banners/reorder', [BannerController::class, 'reorder'])->name('banners.reorder');
+        Route::get('banners/{banner}/edit', [BannerController::class, 'edit'])->name('banners.edit');
+        // POST, not PUT: see note on posts.update above (multipart + spoofed PUT).
+        Route::post('banners/{banner}', [BannerController::class, 'update'])->name('banners.update');
+        Route::post('banners/{banner}/toggle', [BannerController::class, 'toggle'])->name('banners.toggle');
+    });
+    Route::delete('banners/{banner}', [BannerController::class, 'destroy'])->name('banners.destroy')->middleware('permission:banners,delete');
+
+    // Site-wide settings (name, logo, contact info, homepage texts)
+    Route::get('settings', [SettingController::class, 'edit'])->name('settings.edit')->middleware('permission:settings,view');
+    Route::post('settings', [SettingController::class, 'update'])->name('settings.update')->middleware('permission:settings,edit');
 
     Route::middleware('permission:contacts,view')->group(function () {
         Route::get('contacts', [AdminContactController::class, 'index'])->name('contacts.index');

@@ -1,60 +1,84 @@
 @extends('layouts.app')
 
 @section('title', 'Trang chủ')
-@section('meta_description', 'Trung tâm Ngoại ngữ - Tin học, Trường Đại học Hạ Long: đào tạo, luyện thi và cấp chứng chỉ ngoại ngữ, tin học, HSK uy tín. Tra cứu chứng chỉ trực tuyến, xem tin tức tuyển sinh và thư viện ảnh hoạt động.')
-@section('og_image', optional($heroPosts->first())->image ? Storage::url($heroPosts->first()->image) : asset('images/logo.jpg'))
+@section('meta_description', setting('meta_description', config('app.name')))
+@section('og_image', optional($banners->firstWhere('image'))->image_url ?? (optional($heroPosts->first())->image ? Storage::url($heroPosts->first()->image) : asset('images/logo.jpg')))
 
 @section('content')
-    {{-- Hero: full-width banner, text sinks over the background (color placeholder until real banner photos exist) --}}
-    <section class="hero-section">
-        <div class="swiper hero-swiper">
-            <div class="swiper-wrapper">
-                {{-- Slide 1: general intro (trạng thái chung / mặc định) --}}
-                <div class="swiper-slide">
-                    <div class="hero-slide" style="background: linear-gradient(135deg, var(--brand), var(--brand-dark));">
-                        <div class="hero-slide-overlay"></div>
-                        <div class="container position-relative">
-                            <div class="hero-slide-content text-white" data-aos="fade-up">
-                                <span class="badge bg-white text-brand mb-3 fw-semibold">Trực thuộc Trường Đại học Hạ Long</span>
-                                <h1 class="display-5 fw-bold text-white mb-3">{{ config('app.name') }}</h1>
-                                <p class="lead mb-4" style="max-width: 620px; opacity: .92;">Đào tạo, luyện thi và cấp chứng chỉ ngoại ngữ, tin học, HSK chuẩn đầu ra. Tra cứu chứng chỉ trực tuyến nhanh chóng, chính xác.</p>
-                                <div class="d-flex flex-wrap gap-3">
-                                    <a href="tel:0974024655" class="btn btn-light btn-lg fw-semibold text-brand">
-                                        <i class="bi bi-telephone me-2"></i>Hotline 0974 024 655
-                                    </a>
+    {{-- Hero banners: managed in Admin > Giao diện website > Banner trang chủ --}}
+    @if ($banners->isNotEmpty())
+        <section class="hero-section">
+            <div class="swiper hero-swiper">
+                <div class="swiper-wrapper">
+                    @foreach ($banners as $banner)
+                        @php
+                            $target = $banner->open_new_tab ? 'target="_blank" rel="noopener"' : '';
+                            $gradient = [
+                                'brand' => 'linear-gradient(135deg, var(--brand), var(--brand-dark))',
+                                'accent' => 'linear-gradient(135deg, var(--accent), var(--brand))',
+                                'dark' => 'linear-gradient(135deg, #1f2937, #0b1220)',
+                            ][$banner->background] ?? 'linear-gradient(135deg, var(--brand), var(--brand-dark))';
+                        @endphp
+                        <div class="swiper-slide">
+                            @if ($banner->type === 'image')
+                                {{-- Poster: always full width, height follows the image ratio --}}
+                                @if ($banner->button_href)<a href="{{ $banner->button_href }}" {!! $target !!}>@endif
+                                    <picture>
+                                        @if ($banner->image_mobile_url)
+                                            <source media="(max-width: 767.98px)" srcset="{{ $banner->image_mobile_url }}">
+                                        @endif
+                                        <img src="{{ $banner->image_url }}" alt="{{ $banner->title }}" class="hero-slide-poster-img" @if (! $loop->first) loading="lazy" @endif>
+                                    </picture>
+                                @if ($banner->button_href)</a>@endif
+                            @else
+                                <div class="hero-slide" style="background: {{ $gradient }};">
+                                    @if ($banner->image_url)
+                                        <picture class="hero-slide-bg">
+                                            @if ($banner->image_mobile_url)
+                                                <source media="(max-width: 767.98px)" srcset="{{ $banner->image_mobile_url }}">
+                                            @endif
+                                            <img src="{{ $banner->image_url }}" alt="" @if (! $loop->first) loading="lazy" @endif>
+                                        </picture>
+                                    @endif
+                                    <div class="hero-slide-overlay"></div>
+                                    <div class="container position-relative">
+                                        <div class="hero-slide-content text-white" @if ($loop->first) data-aos="fade-up" @endif>
+                                            @if ($banner->badge)
+                                                <span class="badge bg-white {{ $banner->background === 'accent' ? 'text-accent' : 'text-brand' }} mb-3 fw-semibold">{{ $banner->badge }}</span>
+                                            @endif
+                                            @if ($loop->first)
+                                                <h1 class="display-5 fw-bold text-white mb-3">{{ $banner->title }}</h1>
+                                            @else
+                                                <h2 class="display-6 fw-bold text-white mb-3">{{ $banner->title }}</h2>
+                                            @endif
+                                            @if ($banner->description)
+                                                <p class="lead mb-4" style="max-width: 620px; opacity: .92;">{{ $banner->description }}</p>
+                                            @endif
+                                            @if ($banner->bullet_list)
+                                                <ul class="list-unstyled mb-4">
+                                                    @foreach ($banner->bullet_list as $point)
+                                                        <li class="mb-2"><i class="bi bi-check-circle-fill me-2"></i>{{ $point }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            @endif
+                                            @if ($banner->button_text && $banner->button_href)
+                                                <a href="{{ $banner->button_href }}" class="btn btn-light btn-lg fw-semibold text-brand" {!! $target !!}>
+                                                    @if (str_starts_with($banner->button_href, 'tel:'))<i class="bi bi-telephone me-2"></i>@endif{{ $banner->button_text }}
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
-                    </div>
+                    @endforeach
                 </div>
-                {{-- Slide 2: tuyển sinh promo --}}
-                <div class="swiper-slide">
-                    <div class="hero-slide" style="background: linear-gradient(135deg, var(--accent), var(--brand));">
-                        <div class="hero-slide-overlay"></div>
-                        <div class="container position-relative">
-                            <div class="hero-slide-content text-white">
-                                <span class="badge bg-white text-accent mb-3 fw-semibold">Tuyển sinh</span>
-                                <h2 class="display-6 fw-bold text-white mb-3">Tuyển sinh các lớp Ngoại ngữ &middot; Tin học &middot; HSK</h2>
-                                <ul class="list-unstyled mb-4">
-                                    <li class="mb-2"><i class="bi bi-check-circle-fill me-2"></i>Luyện thi chứng chỉ ứng dụng CNTT</li>
-                                    <li class="mb-2"><i class="bi bi-check-circle-fill me-2"></i>Luyện thi chứng chỉ tiếng Trung quốc tế HSK</li>
-                                    <li class="mb-2"><i class="bi bi-check-circle-fill me-2"></i>Tiếng Anh, tiếng Nhật, tiếng Hàn mọi trình độ</li>
-                                </ul>
-                                <a href="tel:0974024655" class="btn btn-light fw-semibold">
-                                    <i class="bi bi-telephone me-2"></i>Đăng ký ngay: 0974 024 655
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {{-- Slide 3: real enrollment poster (banner template: always full width, height follows the image ratio) --}}
-                <div class="swiper-slide">
-                    <img src="{{ Storage::url('slideshow/hero-image-tuyen-sinh-3-2.jpg') }}" alt="Thông báo tuyển sinh các lớp Ngoại ngữ - Tin học - HSK" class="hero-slide-poster-img" loading="lazy">
-                </div>
+                @if ($banners->count() > 1)
+                    <div class="swiper-pagination"></div>
+                @endif
             </div>
-            <div class="swiper-pagination"></div>
-        </div>
-    </section>
+        </section>
+    @endif
 
     {{-- 3 key actions --}}
     <section class="py-5">
@@ -105,22 +129,17 @@
 
 
     {{-- Lĩnh vực đào tạo --}}
+    @php $fields = setting('home_fields', []); @endphp
+    @if ($fields)
     <section class="py-5 bg-white">
         <div class="container">
             <div class="mb-4 text-center" data-aos="fade-up">
-                <h2 class="h3 mb-1">Lĩnh vực đào tạo</h2>
-                <p class="text-muted mb-0">3 lĩnh vực đào tạo chính của trung tâm</p>
+                <h2 class="h3 mb-1">{{ setting('home_fields_title', 'Lĩnh vực đào tạo') }}</h2>
+                @if (setting('home_fields_subtitle'))<p class="text-muted mb-0">{{ setting('home_fields_subtitle') }}</p>@endif
             </div>
-            @php
-                $fields = [
-                    ['icon' => 'bi-laptop', 'title' => 'Chứng chỉ Tin học (CNTT)', 'desc' => 'Đào tạo và tổ chức thi chứng chỉ ứng dụng công nghệ thông tin theo chuẩn đầu ra.'],
-                    ['icon' => 'bi-translate', 'title' => 'Ngoại ngữ', 'desc' => 'Đào tạo tiếng Anh, tiếng Nhật, tiếng Hàn cho mọi trình độ, từ mất gốc đến nâng cao.'],
-                    ['icon' => 'bi-mortarboard', 'title' => 'Chứng chỉ HSK', 'desc' => 'Đào tạo và tổ chức thi chứng chỉ tiếng Trung Quốc tế HSK (HSK3 - HSK5).'],
-                ];
-            @endphp
             <div class="row g-4">
                 @foreach ($fields as $i => $field)
-                    <div class="col-md-4" data-aos="fade-up" data-aos-delay="{{ $i * 100 }}">
+                    <div class="col-md-6 col-lg-{{ count($fields) % 3 === 0 || count($fields) > 4 ? 4 : (count($fields) === 4 ? 3 : 12 / max(1, count($fields))) }}" data-aos="fade-up" data-aos-delay="{{ ($i % 3) * 100 }}">
                         <div class="card h-100 text-center p-4 border-0 shadow-soft">
                             <i class="bi {{ $field['icon'] }} text-brand mb-3" style="font-size: 2.2rem;"></i>
                             <div class="fw-semibold text-body mb-2">{{ $field['title'] }}</div>
@@ -131,6 +150,7 @@
             </div>
         </div>
     </section>
+    @endif
 
     {{-- Latest news, grouped by category --}}
     {{-- Desktop/tablet: one stacked section per category --}}
@@ -192,22 +212,14 @@
     </section>
 
     {{-- Why choose us --}}
+    @php $reasons = setting('home_reasons', []); @endphp
+    @if ($reasons)
     <section class="py-5 bg-white">
         <div class="container">
             <div class="mb-4 text-center" data-aos="fade-up">
-                <h2 class="h3 mb-1">Vì sao chọn {{ config('app.name') }}</h2>
-                <p class="text-muted mb-0">Đơn vị đào tạo trực thuộc Trường Đại học Hạ Long</p>
+                <h2 class="h3 mb-1">{{ setting('home_reasons_title', 'Vì sao chọn '.config('app.name')) }}</h2>
+                @if (setting('home_reasons_subtitle'))<p class="text-muted mb-0">{{ setting('home_reasons_subtitle') }}</p>@endif
             </div>
-            @php
-                $reasons = [
-                    ['icon' => 'bi-patch-check', 'title' => 'Trực thuộc trường đại học', 'desc' => 'Chứng chỉ được cấp bởi đơn vị trực thuộc Trường Đại học Hạ Long, đảm bảo giá trị pháp lý.'],
-                    ['icon' => 'bi-person-workspace', 'title' => 'Đội ngũ giảng viên', 'desc' => 'Giảng viên giàu kinh nghiệm, tận tâm đồng hành cùng học viên trong suốt khóa học.'],
-                    ['icon' => 'bi-search-heart', 'title' => 'Tra cứu minh bạch', 'desc' => 'Hệ thống tra cứu chứng chỉ trực tuyến, kiểm tra thông tin nhanh chóng, chính xác.'],
-                    ['icon' => 'bi-calendar2-check', 'title' => 'Lịch thi rõ ràng', 'desc' => 'Thông tin tuyển sinh, lịch thi và kết quả được cập nhật thường xuyên trên website.'],
-                    ['icon' => 'bi-building', 'title' => 'Cơ sở vật chất', 'desc' => 'Phòng học và phòng thi đạt chuẩn trong khuôn viên Trường Đại học Hạ Long.'],
-                    ['icon' => 'bi-headset', 'title' => 'Hỗ trợ tận tâm', 'desc' => 'Đội ngũ tư vấn sẵn sàng hỗ trợ học viên trước, trong và sau khóa học.'],
-                ];
-            @endphp
             <div class="row g-4">
                 @foreach ($reasons as $i => $reason)
                     <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="{{ ($i % 3) * 80 }}">
@@ -223,6 +235,7 @@
             </div>
         </div>
     </section>
+    @endif
 
     {{-- Address & contact --}}
     <section class="py-5">
@@ -238,17 +251,17 @@
                             <i class="bi bi-geo-alt-fill text-accent fs-4 flex-shrink-0"></i>
                             <div>
                                 <div class="fw-semibold mb-1">Địa chỉ</div>
-                                <p class="text-muted small mb-0">{{ config('site.contact.address') }}</p>
+                                <p class="text-muted small mb-0">{{ setting('contact_address', config('site.contact.address')) }}</p>
                             </div>
                         </div>
-                        @foreach (config('site.contact.staff') as $staff)
+                        @foreach (setting('contact_staff', config('site.contact.staff', [])) as $staff)
                             <div class="d-flex gap-3 mb-4">
                                 <i class="bi bi-person-circle text-brand fs-4 flex-shrink-0"></i>
                                 <div>
                                     <div class="fw-semibold mb-1">{{ $staff['name'] }}</div>
                                     <p class="text-muted small mb-0">
-                                        <a href="tel:{{ $staff['phone'] }}" class="text-muted"><i class="bi bi-telephone me-1"></i>{{ $staff['phone'] }}</a><br>
-                                        <a href="mailto:{{ $staff['email'] }}" class="text-muted"><i class="bi bi-envelope me-1"></i>{{ $staff['email'] }}</a>
+                                        <a href="tel:{{ preg_replace('/[^0-9+]/', '', $staff['phone']) }}" class="text-muted"><i class="bi bi-telephone me-1"></i>{{ $staff['phone'] }}</a>
+                                        @if (! empty($staff['email']))<br><a href="mailto:{{ $staff['email'] }}" class="text-muted"><i class="bi bi-envelope me-1"></i>{{ $staff['email'] }}</a>@endif
                                     </p>
                                 </div>
                             </div>
@@ -261,7 +274,7 @@
                 <div class="col-lg-7" data-aos="fade-left">
                     <div class="rounded-4 overflow-hidden shadow-soft h-100" style="min-height: 360px;">
                         <iframe
-                            src="https://www.google.com/maps?q={{ urlencode(config('site.contact.address')) }}&output=embed"
+                            src="https://www.google.com/maps?q={{ urlencode(setting('map_query', setting('contact_address', config('site.contact.address')))) }}&output=embed"
                             width="100%" height="100%" style="border:0; min-height: 360px;"
                             allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"
                             title="Bản đồ chỉ đường đến {{ config('app.name') }}">
@@ -276,11 +289,13 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            if (window.Swiper) {
+            if (window.Swiper && document.querySelector('.hero-swiper')) {
+                var slideCount = document.querySelectorAll('.hero-swiper .swiper-slide').length;
                 new Swiper('.hero-swiper', {
-                    loop: true,
+                    loop: slideCount > 1,
+                    allowTouchMove: slideCount > 1,
                     autoHeight: true,
-                    autoplay: { delay: 5000, disableOnInteraction: false },
+                    autoplay: slideCount > 1 ? { delay: 5000, disableOnInteraction: false } : false,
                     pagination: { el: '.swiper-pagination', clickable: true },
                 });
             }

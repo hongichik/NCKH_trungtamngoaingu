@@ -2,6 +2,17 @@
 
 @section('title', $post->title)
 
+@push('head')
+    <link rel="stylesheet" href="{{ asset('vendor/ckeditor5/ckeditor5-content.css') }}">
+    <style>
+        /* Match the site font instead of CKEditor's default content font. */
+        .ck-content { font-family: inherit; font-size: inherit; line-height: 1.7; }
+        .ck-content .image { margin: 1rem auto; }
+        .ck-content .media iframe, .ck-content iframe { max-width: 100%; }
+        .ck-content table { width: 100%; }
+    </style>
+@endpush
+
 @section('content')
     <div class="container py-5">
         <div class="row g-4 g-lg-5">
@@ -26,7 +37,7 @@
                         <img src="{{ Storage::url($post->image) }}" class="img-fluid rounded-4 shadow-soft mb-4" alt="{{ $post->title }}">
                     @endif
 
-                    <div class="post-content">{!! $post->content !!}</div>
+                    <div class="post-content ck-content">{!! $post->content !!}</div>
 
                     @if ($post->images->isNotEmpty())
                         <div class="row g-2 mt-4">
@@ -82,9 +93,9 @@
                             <h2 class="h6 mb-3">Liên hệ tư vấn</h2>
                             <div class="d-flex gap-3 mb-3">
                                 <i class="bi bi-geo-alt-fill text-accent fs-5 flex-shrink-0"></i>
-                                <p class="text-muted small mb-0">{{ config('site.contact.address') }}</p>
+                                <p class="text-muted small mb-0">{{ setting('contact_address', config('site.contact.address')) }}</p>
                             </div>
-                            @foreach (config('site.contact.staff') as $staff)
+                            @foreach (setting('contact_staff', config('site.contact.staff', [])) as $staff)
                                 <div class="d-flex gap-3 mb-3">
                                     <i class="bi bi-person-circle text-brand fs-5 flex-shrink-0"></i>
                                     <div>

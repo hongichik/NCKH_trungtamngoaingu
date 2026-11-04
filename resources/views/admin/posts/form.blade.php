@@ -44,8 +44,8 @@
                         <h3 class="card-title">Nội dung bài viết</h3>
                     </div>
                     <div class="card-body">
-                        <div id="content-editor" style="min-height: 420px;">{!! old('content', $post->content) !!}</div>
-                        <textarea name="content" id="content" class="d-none">{{ old('content', $post->content) }}</textarea>
+                        <textarea name="content" id="content" class="form-control" rows="20" data-rich-editor data-upload-url="{{ route('admin.editor.upload') }}">{{ old('content', $post->content) }}</textarea>
+                        <div class="form-hint mt-2"><i class="ti ti-info-circle me-1"></i>Kéo thả hoặc dán ảnh trực tiếp vào nội dung. Bấm vào ảnh để chỉnh kích thước (kéo góc ảnh), căn trái/phải cho chữ bao quanh, thêm chú thích hoặc gắn link.</div>
                         @error('content') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>
                 </div>
@@ -63,10 +63,8 @@
                                             <div class="card">
                                                 <img src="{{ Storage::url($image->image) }}" class="card-img-top" style="height: 100px; object-fit: cover;">
                                                 <div class="card-body p-2">
-                                                    <form method="POST" action="{{ route('admin.posts.images.destroy', [$post, $image]) }}" onsubmit="return confirm('Xoá ảnh này?')">
-                                                        @csrf @method('DELETE')
-                                                        <button class="btn btn-sm btn-outline-danger w-100">Xoá</button>
-                                                    </form>
+                                                    {{-- Submits the standalone form below: forms can't be nested inside the post form. --}}
+                                                    <button type="submit" form="delete-image-{{ $image->id }}" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('Xoá ảnh này?')">Xoá</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -136,95 +134,39 @@
                         <h3 class="card-title">Ảnh đại diện</h3>
                     </div>
                     <div class="card-body">
-                        @if ($post->image)
-                            <div id="current-image" class="mb-3 text-center">
-                                <img src="{{ Storage::url($post->image) }}" class="img-fluid rounded mb-2">
-                                <div class="form-check d-inline-flex align-items-center gap-1">
-                                    <input type="checkbox" name="remove_image" value="1" class="form-check-input" id="remove_image">
-                                    <label class="form-check-label" for="remove_image">Xoá ảnh hiện tại</label>
-                                </div>
-                            </div>
-                        @endif
-
-                        <input type="file" name="image" id="image" class="form-control" accept="image/*">
-
-                        <div id="image-preview" class="mt-3 text-center" style="display: none;">
-                            <img id="preview-img" class="img-fluid rounded">
-                        </div>
+                        @include('admin.partials.image-field', [
+                            'name' => 'image',
+                            'currentUrl' => $post->image ? Storage::url($post->image) : null,
+                            'aspect' => 16 / 9,
+                            'removeName' => 'remove_image',
+                            'hint' => 'Tỉ lệ khuyên dùng 16:9. Sau khi chọn ảnh có thể cắt, xoay, phóng to.',
+                        ])
                     </div>
                 </div>
             </div>
         </div>
     </form>
+
+    @if ($post->exists)
+        @foreach ($post->images as $image)
+            <form method="POST" action="{{ route('admin.posts.images.destroy', [$post, $image]) }}" id="delete-image-{{ $image->id }}" class="d-none">
+                @csrf @method('DELETE')
+            </form>
+        @endforeach
+    @endif
 @endsection
 
+@include('admin.partials.rich-editor-assets')
+
 @push('styles')
-    <link href="{{ asset('vendor/quill/quill.snow.css') }}" rel="stylesheet">
     <style>
         .required:after { content: " *"; color: var(--tblr-danger); }
-        #content-editor { background: #fff; }
-        .ql-editor { min-height: 380px; }
     </style>
 @endpush
 
 @push('scripts')
-    <script src="{{ asset('vendor/quill/quill.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            var uploadUrl = @json(route('admin.posts.upload-image'));
-            var csrfToken = @json(csrf_token());
-
-            function uploadImageFile(quill, range, file) {
-                var formData = new FormData();
-                formData.append('image', file);
-
-                fetch(uploadUrl, {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                    body: formData,
-                })
-                    .then(function (response) {
-                        if (!response.ok) throw new Error('upload failed');
-                        return response.json();
-                    })
-                    .then(function (data) {
-                        quill.insertEmbed(range.index, 'image', data.url, 'user');
-                        quill.setSelection(range.index + 1, 0, 'user');
-                    })
-                    .catch(function () {
-                        alert('Tải ảnh lên thất bại. Vui lòng thử lại.');
-                    });
-            }
-
-            var quill = new Quill('#content-editor', {
-                theme: 'snow',
-                modules: {
-                    toolbar: [
-                        [{ header: [2, 3, false] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{ list: 'ordered' }, { list: 'bullet' }],
-                        ['link', 'image'],
-                        ['blockquote', 'clean'],
-                    ],
-                    // Route the toolbar image button, drag-and-drop, and paste of images
-                    // all through a real upload instead of Quill's default base64 embed.
-                    uploader: {
-                        mimetypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
-                        handler: function (range, files) {
-                            var quill = this.quill;
-                            files.forEach(function (file) {
-                                uploadImageFile(quill, range, file);
-                            });
-                        },
-                    },
-                },
-            });
-
-            var contentInput = document.getElementById('content');
-            document.getElementById('post-form').addEventListener('submit', function () {
-                contentInput.value = quill.root.innerHTML;
-            });
-
             // Slug: auto from title unless the user has typed into the slug field themselves.
             var titleInput = document.getElementById('title');
             var slugInput = document.getElementById('slug');
@@ -252,27 +194,6 @@
             document.getElementById('regenerate-slug').addEventListener('click', function () {
                 slugInput.value = slugify(titleInput.value);
                 slugManuallyEdited = false;
-            });
-
-            // Featured image preview + auto-uncheck "remove" when a new file is chosen.
-            var imageInput = document.getElementById('image');
-            var preview = document.getElementById('image-preview');
-            var previewImg = document.getElementById('preview-img');
-            var removeCheckbox = document.getElementById('remove_image');
-
-            imageInput.addEventListener('change', function () {
-                var file = imageInput.files[0];
-                if (!file) {
-                    preview.style.display = 'none';
-                    return;
-                }
-                if (removeCheckbox) removeCheckbox.checked = false;
-                var reader = new FileReader();
-                reader.onload = function (e) {
-                    previewImg.src = e.target.result;
-                    preview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
             });
         });
     </script>
