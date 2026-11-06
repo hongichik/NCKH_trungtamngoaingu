@@ -48,6 +48,10 @@ class DbSyncController extends Controller
                 'max_execution_time' => ini_get('max_execution_time'),
             ],
             'tables' => $tables,
+            'ai_jobs' => \App\Models\AiJob::selectRaw('type, status, COUNT(*) AS c')->groupBy('type', 'status')->get()
+                ->groupBy('type')->map(fn ($g) => $g->pluck('c', 'status')),
+            'ai_recent_errors' => \App\Models\AiJob::whereNotNull('last_error')->latest('id')->limit(5)->get(['id', 'type', 'status', 'last_error', 'updated_at']),
+            'ai_heartbeat' => \App\Support\Ai\Jobs\AiJobRunner::lastHeartbeat(),
         ]);
     }
 
@@ -58,6 +62,7 @@ class DbSyncController extends Controller
             $tables = $this->sync->resolveTables(
                 (array) $request->query('tables', []),
                 (array) $request->query('exclude', []),
+                $request->boolean('include_protected'),
             );
         } catch (InvalidArgumentException $e) {
             return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
@@ -111,6 +116,30 @@ class DbSyncController extends Controller
         return response()->json(['ok' => true, 'seq' => $seq, 'bytes' => $bytes]);
     }
 
+    /** Lệnh artisan chạy được qua API (chỉ danh sách này, tham số được kiểm tra). */
+    private const RUNNABLE = ['demo:learning-data' => ['teacher', 'student']];
+
+    /** POST /api/db-sync/run {command, options:{...}} — chạy lệnh trong danh sách cho phép (hosting không có SSH). */
+    public function run(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'command' => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys(self::RUNNABLE))],
+            'options' => ['nullable', 'array'],
+            'options.*' => ['nullable', 'string', 'max:190'],
+        ]);
+        $params = [];
+        foreach (self::RUNNABLE[$data['command']] as $opt) {
+            if (filled($data['options'][$opt] ?? null)) {
+                $params['--'.$opt] = $data['options'][$opt];
+            }
+        }
+        @set_time_limit(120);
+        $code = Artisan::call($data['command'], $params);
+        Log::info('DB sync run', ['command' => $data['command'], 'params' => $params, 'code' => $code, 'ip' => $request->ip()]);
+
+        return response()->json(['ok' => $code === 0, 'exit_code' => $code, 'output' => trim(Artisan::output())], $code === 0 ? 200 : 500);
+    }
+
     /** POST /api/db-sync/commit?id=<32 hex>&migrate=1 — nhập các phần đã nhận. */
     public function commit(Request $request): JsonResponse
     {
@@ -147,7 +176,8 @@ class DbSyncController extends Controller
             }
 
             try {
-                $result = $this->sync->import($parts);
+                // include_protected=1 (db:sync-push --include-protected): ghi đè cả bảng được bảo vệ (giáo viên, khoá, lớp...)
+                $result = $this->sync->import($parts, true, $request->boolean('include_protected'));
             } catch (Throwable $e) {
                 Log::error('DB sync import failed', ['error' => $e->getMessage()]);
 

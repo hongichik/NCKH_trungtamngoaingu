@@ -174,6 +174,7 @@
             </div>
         </div>
 
+        @if ($showHsk)
         <div class="card mb-4 hsk-block">
             <div class="card-body">
                 <h2 class="h6 mb-1 text-accent">IV. Thông tin dành riêng cho thí sinh đăng ký thi HSK</h2>
@@ -213,6 +214,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         <div class="form-check mb-3">
             <input type="checkbox" class="form-check-input" id="commit" required>

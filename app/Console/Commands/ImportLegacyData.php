@@ -260,6 +260,7 @@ class ImportLegacyData extends Command
         foreach ($rows as $row) {
             if (! isset($studentMap[$row->student_id])) {
                 $bar->advance();
+
                 continue;
             }
 

@@ -1,0 +1,27 @@
+// Video quản trị 4: Kỳ thi HSK / Tin học — cấp độ, lệ phí, đợt thi, đăng ký dự thi
+export default (d) => ({
+    slug: 'qtv-ky-thi',
+    title: 'Quản trị viên — Kỳ thi & đăng ký dự thi',
+    scenes: [
+        { caption: false, say: 'Xin chào! Video này hướng dẫn tổ chức kỳ thi chứng chỉ HSK và Tin học: thiết lập cấp độ và lệ phí, mở đợt thi, và xử lý đăng ký của thí sinh.',
+            do: async (t) => { await t.card('Quản trị viên', 'Kỳ thi & đăng ký dự thi', 'Cấp độ & lệ phí · Đợt thi · Xác nhận thanh toán'); await t.goto('/admin/login'); } },
+        { say: 'Đăng nhập trang quản trị. Hai nhóm Kỳ thi HSK và Kỳ thi Tin học ở menu trái có cấu trúc giống nhau: Đợt thi và lệ phí, Đăng ký dự thi.',
+            do: async (t) => { await t.hideCard(); await t.login('/admin/login', 'demo.admin' + d.domain, d.password); await t.point('aside a:has-text("Kỳ thi HSK")', 1000); await t.point('aside a:has-text("Kỳ thi Tin học")', 1000); } },
+        { say: 'Trang Đợt thi và lệ phí có hai phần. Phần Cấp độ và bảng giá: mỗi cấp độ, ví dụ HSK 1 đến HSK 6, có mức lệ phí riêng và có thể tạm ẩn. Bấm Thêm cấp độ để bổ sung.',
+            do: async (t) => { await t.goto('/admin/exams?type=hsk'); await t.point('text=Cấp độ & Bảng giá', 1000); await t.point('button:has-text("Thêm cấp độ"), a:has-text("Thêm cấp độ")', 1000); await t.point('input[name=price]', 900); } },
+        { say: 'Phần Đợt thi: mỗi đợt có tên, ngày thi, sức chứa, thời gian mở và đóng đăng ký, trạng thái. Thí sinh chỉ thấy các đợt đang mở đăng ký.',
+            do: async (t) => { await t.point('text=Đợt thi', 900); await t.scroll(350, { ms: 1000 }); } },
+        { say: 'Tạo đợt thi mới: nhập tên đợt, ngày thi, sức chứa, khoảng thời gian nhận đăng ký và trạng thái. Bấm Lưu để mở đợt.',
+            do: async (t) => { await t.goto('/admin/exams/sessions/create?type=cntt'); await t.type('input[name=name]', 'Đợt thi Tin học tháng 12/2026', { delay: 35 }); await t.point('input[name=exam_date]', 700); await t.point('input[name=capacity]', 700); await t.point('input[name=registration_start]', 700); await t.point('input[name=registration_end]', 700); await t.point('select[name=status]', 800); } },
+        { say: 'Trên website, thí sinh đăng ký tài khoản, hoàn thiện hồ sơ rồi chọn đợt thi và cấp độ. Mỗi đăng ký có mã riêng để đối chiếu khi nộp lệ phí.',
+            do: async (t) => { await t.goto('/dang-ky-chung-chi?type=cntt'); await t.scroll(250, { ms: 900 }); } },
+        { say: 'Mục Đăng ký dự thi liệt kê thí sinh đã đăng ký theo từng loại chứng chỉ. Lọc theo trạng thái: chờ thanh toán, đã thanh toán, đã huỷ.',
+            do: async (t) => { await t.goto('/admin/exam-registrations?type=cntt'); await t.point('select[name=status]', 1000); await t.point('a:has-text("HSK")', 800); await t.scroll(200); } },
+        { say: 'Khi thí sinh đã nộp lệ phí, bấm Xác nhận thanh toán ở dòng tương ứng; trạng thái đổi sang Đã thanh toán và thí sinh thấy ngay ở trang của mình. Đăng ký sai có thể Huỷ.',
+            do: async (t) => { const b = t.page.locator('button:has-text("Xác nhận thanh toán")').first(); if (await b.count()) await t.point(b, 1500); else await t.point('select[name=status]', 1200); } },
+        { say: 'Trang Tổng quan đếm số đăng ký chờ thanh toán và tổng lệ phí đã thu, cùng danh sách các kỳ thi sắp diễn ra để theo dõi hằng ngày.',
+            do: async (t) => { await t.goto('/admin'); await t.point('text=Đăng ký chờ thanh toán', 1000); await t.point('text=Lệ phí đã thu', 1000); await t.scroll(500, { ms: 1200 }); } },
+        { caption: false, say: 'Đó là quy trình tổ chức kỳ thi trên hệ thống. Video tiếp theo: xây dựng khoá học, bài học và bài tập.',
+            do: async (t) => { await t.card('Cảm ơn bạn đã theo dõi', 'Kỳ thi & đăng ký dự thi', 'Tiếp theo: Khoá học · Bài học · Bài tập'); } },
+    ],
+});

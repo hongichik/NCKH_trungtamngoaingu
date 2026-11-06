@@ -3,19 +3,7 @@
 @section('title', 'Quản trị hệ thống')
 
 @section('content')
-    <div class="card mb-3">
-        <div class="card-header">
-            <ul class="nav nav-tabs card-header-tabs flex-nowrap overflow-auto">
-                @foreach ($tabs as $key => [$label, $icon])
-                    <li class="nav-item">
-                        <a href="{{ route('admin.system.index', ['tab' => $key]) }}" class="nav-link text-nowrap {{ $tab === $key ? 'active' : '' }}">
-                            <i class="ti {{ $icon }} me-2"></i>{{ $label }}
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
-        </div>
-    </div>
+    @include('admin.system.partials.tabs')
 
     {{-- ================================================================ TỔNG QUAN --}}
     @if ($tab === 'overview')
@@ -109,7 +97,8 @@
         @endif
 
         @php
-            $defaultExcluded = ['migrations', 'sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'password_reset_tokens'];
+            $defaultExcluded = ['migrations', 'sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'password_reset_tokens',
+                'ai_jobs', 'ai_usage', 'teachers', 'textbooks', 'textbook_pages', 'textbook_units', 'textbook_chunks', 'unit_profiles', 'audio_tracks'];
             $extraExcluded = old('exclude', array_filter(explode(',', (string) $env->get('DB_SYNC_EXCLUDE'))));
             $token = (string) config('dbsync.token');
         @endphp
@@ -172,7 +161,7 @@
                                     </div>
                                 @endforeach
                             </div>
-                            <div class="form-hint">Bảng hệ thống (mờ) luôn bị loại. Ví dụ tick <code>users</code> để không bao giờ ghi đè tài khoản trên máy này.</div>
+                            <div class="form-hint">Bảng mờ luôn bị loại (bảng hệ thống, hàng đợi AI, giáo viên &amp; giáo trình — do giáo viên tạo trên máy chủ). Ví dụ tick <code>users</code> để không bao giờ ghi đè tài khoản trên máy này.</div>
                         </div>
 
                         <div class="mb-1">
@@ -223,6 +212,249 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ================================================================ AI --}}
+    @if ($tab === 'ai')
+        @php
+            $key = (string) config('ai.openai.key');
+            $budget = (float) config('ai.limits.monthly_budget_usd');
+            $pct = $budget > 0 ? min(100, round($aiStats['month_cost'] / $budget * 100)) : 0;
+            $featureLabels = ['analysis' => 'Phân tích tài liệu', 'generate' => 'Sinh bài tập', 'grading' => 'Chấm bài', 'ocr' => 'Đọc trang scan', 'transcribe' => 'Chép lời', 'tts' => 'Giọng đọc'];
+            $statusCls = ['pending' => 'bg-secondary-lt', 'running' => 'bg-blue-lt', 'done' => 'bg-success-lt', 'failed' => 'bg-danger-lt'];
+        @endphp
+
+        <div class="row row-cards mb-3">
+            <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body">
+                <div class="text-muted small">Lượt AI hôm nay</div><div class="h2 mb-0">{{ number_format($aiStats['today_calls']) }}</div>
+            </div></div></div>
+            <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body">
+                <div class="text-muted small">Lượt AI tháng này</div>
+                <div class="h2 mb-0">{{ number_format($aiStats['month_calls']) }}@if (config('ai.limits.monthly_calls'))<span class="text-muted fs-5"> / {{ number_format(config('ai.limits.monthly_calls')) }}</span>@endif</div>
+                @if ($aiStats['month_failed'])<div class="small text-danger">{{ $aiStats['month_failed'] }} lượt lỗi</div>@endif
+            </div></div></div>
+            <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body">
+                <div class="text-muted small">Chi phí ước tính tháng này</div>
+                <div class="h2 mb-1">${{ number_format($aiStats['month_cost'], 2) }}@if ($budget)<span class="text-muted fs-5"> / ${{ number_format($budget, 2) }}</span>@endif</div>
+                @if ($budget)<div class="progress progress-sm"><div class="progress-bar {{ $pct >= 90 ? 'bg-danger' : ($pct >= 70 ? 'bg-warning' : 'bg-primary') }}" style="width: {{ $pct }}%"></div></div>@endif
+            </div></div></div>
+            <div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body">
+                <div class="text-muted small">Hàng đợi</div>
+                <div class="d-flex gap-2 flex-wrap mt-1">
+                    @foreach (\App\Models\AiJob::STATUS_LABELS as $st => $label)
+                        <span class="badge {{ $statusCls[$st] }}">{{ $label }}: {{ $jobCounts[$st] }}</span>
+                    @endforeach
+                </div>
+                <div class="small mt-2 {{ $heartbeat ? 'text-muted' : 'text-warning' }}">
+                    Cron: {{ $heartbeat ? 'chạy lần cuối '.\Illuminate\Support\Carbon::parse($heartbeat)->diffForHumans() : 'chưa thấy chạy' }}
+                </div>
+            </div></div></div>
+        </div>
+
+        @if ($lanes)
+            <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">Hàng đợi theo người <span class="text-muted fw-normal small">(mỗi người một làn)</span></h3></div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-vcenter card-table">
+                        <thead><tr><th>Người gửi</th><th class="text-end">Đang chờ</th><th>Trạng thái</th></tr></thead>
+                        @foreach ($lanes as $l)
+                            <tr>
+                                <td>{{ $l['label'] }}</td>
+                                <td class="text-end">{{ number_format($l['pending']) }}</td>
+                                <td>{!! $l['running'] ? '<span class="badge bg-blue-lt">Đang xử lý</span>' : '<span class="badge bg-secondary-lt">Chờ tới lượt</span>' !!}</td>
+                            </tr>
+                        @endforeach
+                    </table>
+                </div>
+            </div>
+        @endif
+
+        <div class="row row-cards">
+            <div class="col-lg-7">
+                <form method="POST" action="{{ route('admin.system.ai') }}" class="card">
+                    @csrf
+                    <div class="card-header"><h3 class="card-title">Cấu hình AI (OpenAI)</h3></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">API key</label>
+                            <div class="mb-1 small">
+                                @if ($key)
+                                    Đang dùng: <code>{{ substr($key, 0, 7) }}…{{ substr($key, -4) }}</code>
+                                @else
+                                    <span class="text-danger">Chưa có API key — AI chưa dùng được.</span>
+                                @endif
+                            </div>
+                            <input name="api_key" class="form-control font-monospace" autocomplete="off" placeholder="Dán key mới để thay (để trống nếu không đổi)">
+                        </div>
+
+                        <label class="form-label">Model cho từng chức năng</label>
+                        <div class="row g-2 mb-3">
+                            @foreach (['analysis' => 'Phân tích tài liệu', 'generate' => 'Sinh bài tập', 'grading' => 'Chấm Nói / Viết', 'ocr' => 'Đọc trang scan (OCR)', 'transcribe' => 'Chép lời âm thanh', 'tts' => 'Giọng đọc'] as $f => $label)
+                                <div class="col-md-6">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 150px">{{ $label }}</span>
+                                        <input name="model_{{ $f }}" class="form-control font-monospace" value="{{ old('model_'.$f, config('ai.models.'.$f)) }}" required>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-check form-switch mt-1">
+                                    <input type="hidden" name="tts_enabled" value="0">
+                                    <input class="form-check-input" type="checkbox" name="tts_enabled" value="1" @checked(old('tts_enabled', config('ai.tts_enabled')))>
+                                    <span class="form-check-label">Bật giọng đọc AI cho bài Nghe</span>
+                                </label>
+                                <div class="form-hint">Tắt thì dùng audio giáo trình hoặc giọng của trình duyệt (miễn phí).</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Thời gian chờ mỗi lượt (giây)</label>
+                                <input name="timeout" type="number" min="10" max="120" class="form-control" value="{{ old('timeout', config('ai.timeout')) }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Giữ ghi âm bài Nói (ngày)</label>
+                                <input name="recordings_keep_days" type="number" min="0" max="3650" class="form-control" value="{{ old('recordings_keep_days', config('ai.recordings_keep_days')) }}">
+                                <div class="form-hint">Quá hạn tự xoá file (điểm vẫn giữ). 0 = giữ mãi.</div>
+                            </div>
+                        </div>
+
+                        <h4 class="mt-2">Hạn mức &amp; ngân sách <span class="text-muted fw-normal small">(0 = không giới hạn)</span></h4>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Lượt / người / ngày</label>
+                                <input name="limit_actor_daily" type="number" min="0" class="form-control" value="{{ old('limit_actor_daily', config('ai.limits.per_actor_daily')) }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Lượt / tháng (toàn hệ thống)</label>
+                                <input name="limit_monthly_calls" type="number" min="0" class="form-control" value="{{ old('limit_monthly_calls', config('ai.limits.monthly_calls')) }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Ngân sách / tháng (USD)</label>
+                                <input name="budget_monthly_usd" type="number" min="0" step="0.01" class="form-control" value="{{ old('budget_monthly_usd', config('ai.limits.monthly_budget_usd')) }}">
+                            </div>
+                        </div>
+
+                        <h4 class="mt-2">Đơn giá để ước tính chi phí <span class="text-muted fw-normal small">(USD — lấy theo bảng giá của OpenAI cho model đang dùng)</span></h4>
+                        <div class="row g-3">
+                            <div class="col-md-3"><label class="form-label small">Input / 1M token</label><input name="price_input_1m" type="number" min="0" step="0.0001" class="form-control" value="{{ old('price_input_1m', config('ai.pricing.input_per_1m_tokens')) }}"></div>
+                            <div class="col-md-3"><label class="form-label small">Output / 1M token</label><input name="price_output_1m" type="number" min="0" step="0.0001" class="form-control" value="{{ old('price_output_1m', config('ai.pricing.output_per_1m_tokens')) }}"></div>
+                            <div class="col-md-3"><label class="form-label small">Chép lời / phút</label><input name="price_transcribe_min" type="number" min="0" step="0.0001" class="form-control" value="{{ old('price_transcribe_min', config('ai.pricing.transcribe_per_minute')) }}"></div>
+                            <div class="col-md-3"><label class="form-label small">Giọng đọc / 1M ký tự</label><input name="price_tts_1m_chars" type="number" min="0" step="0.0001" class="form-control" value="{{ old('price_tts_1m_chars', config('ai.pricing.tts_per_1m_chars')) }}"></div>
+                        </div>
+                    </div>
+                    <div class="card-footer text-end">
+                        <button class="btn btn-primary" @disabled(! $envWritable)>Lưu cấu hình AI</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card mb-3">
+                    <div class="card-header"><h3 class="card-title">Kiểm tra</h3></div>
+                    <div class="card-body d-flex flex-wrap gap-2">
+                        <form method="POST" action="{{ route('admin.system.ai.test') }}">@csrf
+                            <button class="btn btn-primary" @disabled(! $key)><i class="ti ti-plug-connected me-1"></i>Gửi thử trực tiếp</button>
+                        </form>
+                        <form method="POST" action="{{ route('admin.system.ai.test-job') }}">@csrf
+                            <button class="btn btn-outline-primary" @disabled(! $key)><i class="ti ti-list-check me-1"></i>Thử qua hàng đợi</button>
+                        </form>
+                        <form method="POST" action="{{ route('admin.system.ai.tick') }}">@csrf
+                            <button class="btn btn-outline-secondary"><i class="ti ti-player-play me-1"></i>Chạy hàng đợi ngay</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header"><h3 class="card-title">Cài cron trên cPanel (1 lần)</h3></div>
+                    <div class="card-body small">
+                        <p class="mb-2">cPanel → <strong>Cron Jobs</strong> → thêm <strong>{{ count($cronLines) }} dòng</strong>, mỗi dòng chọn <em>Once Per Minute (* * * * *)</em> và dán 1 lệnh. Số dòng = số giáo viên được xử lý <strong>cùng lúc</strong> (mỗi giáo viên một làn, việc của cùng người luôn chạy lần lượt theo thứ tự gửi; nhiều người hơn số dòng thì xoay vòng).</p>
+                        @foreach ($cronLines as $line)
+                            <code class="d-block p-2 bg-light user-select-all mb-1" style="word-break: break-all">{{ $line }}</code>
+                        @endforeach
+                        <p class="text-muted mt-2 mb-0">Mỗi tiến trình làm <strong>liên tục việc này xong tới việc sau cho tới khi hết hàng đợi</strong> (tối đa 50 phút/lượt). Cron mỗi phút chỉ khởi động lại khi tiến trình đã dừng — việc mới bắt đầu trong vòng 1 phút. Đường dẫn PHP <code>/usr/local/bin/ea-php82</code> theo PHP 8.2 của hosting; không dùng <code>schedule:run</code> (hosting tắt <code>proc_open</code>).</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h3 class="card-title">Theo chức năng (tháng này)</h3></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm card-table">
+                            <thead><tr><th>Chức năng</th><th class="text-end">Lượt</th><th class="text-end">Chi phí</th></tr></thead>
+                            @forelse ($aiStats['by_feature'] as $row)
+                                <tr>
+                                    <td>{{ $featureLabels[$row->feature] ?? $row->feature }}</td>
+                                    <td class="text-end">{{ number_format($row->calls) }}</td>
+                                    <td class="text-end text-muted">${{ number_format((float) $row->cost, 4) }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="3" class="text-center text-muted">Chưa có lượt nào.</td></tr>
+                            @endforelse
+                        </table>
+                    </div>
+                    @if ($aiStats['recent_errors']->isNotEmpty())
+                        <div class="card-body border-top small">
+                            <div class="fw-semibold mb-1">Lỗi gần đây</div>
+                            @foreach ($aiStats['recent_errors'] as $err)
+                                <div class="text-danger mb-1">{{ $err->created_at->format('d/m H:i') }} · {{ $err->feature }}: {{ $err->error }}</div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h3 class="card-title">Việc nền gần đây</h3>
+                @if ($jobCounts['failed'])
+                    <div class="card-actions">
+                        <form method="POST" action="{{ route('admin.system.ai.retry-failed') }}">@csrf
+                            <button class="btn btn-sm btn-warning"><i class="ti ti-refresh me-1"></i>Chạy lại tất cả {{ $jobCounts['failed'] }} việc lỗi</button>
+                        </form>
+                    </div>
+                @endif
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead><tr><th>#</th><th>Loại</th><th>Nhóm</th><th>Trạng thái</th><th>Lần thử</th><th>Kết quả / lỗi</th><th>Tạo lúc</th><th class="w-1"></th></tr></thead>
+                    <tbody>
+                        @forelse ($jobs as $job)
+                            <tr>
+                                <td class="text-muted">{{ $job->id }}</td>
+                                <td><code>{{ $job->type }}</code></td>
+                                <td class="text-muted small">{{ $job->batch ?? '—' }}</td>
+                                <td>
+                                    @if ($job->isPaused())
+                                        <span class="badge bg-yellow-lt">Tạm dừng</span>
+                                    @else
+                                        <span class="badge {{ $statusCls[$job->status] ?? '' }}">{{ \App\Models\AiJob::STATUS_LABELS[$job->status] ?? $job->status }}</span>
+                                    @endif
+                                </td>
+                                <td class="text-muted">{{ $job->attempts }}/{{ $job->max_attempts }}</td>
+                                <td class="small" style="max-width: 360px">
+                                    @if ($job->isPaused())
+                                        <span class="text-warning">{{ \Illuminate\Support\Str::limit($job->last_error, 160) }}</span>
+                                    @elseif ($job->last_error)
+                                        <span class="text-danger">{{ \Illuminate\Support\Str::limit($job->last_error, 160) }}</span>
+                                    @elseif ($job->result)
+                                        <span class="text-muted">{{ \Illuminate\Support\Str::limit(json_encode($job->result, JSON_UNESCAPED_UNICODE), 160) }}</span>
+                                    @endif
+                                </td>
+                                <td class="text-muted text-nowrap small">{{ $job->created_at->format('d/m H:i:s') }}</td>
+                                <td>
+                                    @if ($job->status === 'failed')
+                                        <form method="POST" action="{{ route('admin.system.ai.retry', $job) }}">@csrf<button class="btn btn-sm btn-outline-warning">Chạy lại</button></form>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="8" class="text-center text-muted py-4">Chưa có việc nào.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     @endif

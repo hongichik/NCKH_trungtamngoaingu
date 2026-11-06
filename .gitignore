@@ -21,3 +21,16 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+.DS_Store
+
+# Video hướng dẫn tự động
+/tools/tutorial-videos/node_modules
+/tools/tutorial-videos/.cache
+/storage/app/public/huong-dan
+
+# Video hướng dẫn và tài liệu triển khai dành cho AI — không đẩy lên git
+/docs/huong-dan
+/docs/video-huong-dan
+/docs/TRIEN-KHAI.md
+/docs/TRIEN-KHAI-V2.md
+/docs/deploy-v2-files.txt

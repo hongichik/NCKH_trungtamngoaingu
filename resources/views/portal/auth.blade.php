@@ -4,29 +4,36 @@
 
 @section('content')
     @php
+        // Có ?type= (từ nút đăng ký thi): mặc định tab Đăng ký. Không có (học viên lớp học, người đã có tài khoản): mặc định tab Đăng nhập.
         $loginFailed = $errors->any() && is_null(old('full_name'));
+        $showLogin = $loginFailed || (! $type && ! old('full_name'));
     @endphp
     <div class="container py-5">
         <div class="row justify-content-center">
             <div class="col-lg-6">
                 <div class="text-center mb-4">
-                    <h1 class="h3 mb-2">Đăng ký chứng chỉ {{ $type === 'hsk' ? 'HSK' : ($type === 'cntt' ? 'Ứng dụng CNTT' : '') }}</h1>
-                    <p class="text-muted mb-0">Đăng ký tài khoản thí sinh mới, hoặc đăng nhập nếu bạn đã có tài khoản.</p>
+                    @if ($type)
+                        <h1 class="h3 mb-2">Đăng ký chứng chỉ {{ $type === 'hsk' ? 'HSK' : 'Ứng dụng CNTT' }}</h1>
+                        <p class="text-muted mb-0">Đăng ký tài khoản thí sinh mới, hoặc đăng nhập nếu bạn đã có tài khoản.</p>
+                    @else
+                        <h1 class="h3 mb-2">Cổng học viên &amp; thí sinh</h1>
+                        <p class="text-muted mb-0">Đăng nhập để vào lớp học, làm bài tập, xem điểm; hoặc đăng ký tài khoản mới để đăng ký thi.</p>
+                    @endif
                 </div>
 
                 <div class="card shadow-soft border-0">
                     <div class="card-body p-4">
                         <ul class="nav nav-pills nav-fill mb-4" id="authTabs" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link {{ $loginFailed ? '' : 'active' }}" id="register-tab" data-bs-toggle="pill" data-bs-target="#register-pane" type="button">Đăng ký tài khoản</button>
+                                <button class="nav-link {{ $showLogin ? '' : 'active' }}" id="register-tab" data-bs-toggle="pill" data-bs-target="#register-pane" type="button">Đăng ký tài khoản</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link {{ $loginFailed ? 'active' : '' }}" id="login-tab" data-bs-toggle="pill" data-bs-target="#login-pane" type="button">Đã có tài khoản</button>
+                                <button class="nav-link {{ $showLogin ? 'active' : '' }}" id="login-tab" data-bs-toggle="pill" data-bs-target="#login-pane" type="button">Đã có tài khoản</button>
                             </li>
                         </ul>
 
                         <div class="tab-content">
-                            <div class="tab-pane fade {{ $loginFailed ? '' : 'show active' }}" id="register-pane">
+                            <div class="tab-pane fade {{ $showLogin ? '' : 'show active' }}" id="register-pane">
                                 <form method="POST" action="{{ route('portal.register') }}">
                                     @csrf
                                     <input type="hidden" name="type" value="{{ $type }}">
@@ -61,7 +68,7 @@
                                 </form>
                             </div>
 
-                            <div class="tab-pane fade {{ $loginFailed ? 'show active' : '' }}" id="login-pane">
+                            <div class="tab-pane fade {{ $showLogin ? 'show active' : '' }}" id="login-pane">
                                 <form method="POST" action="{{ route('portal.login') }}">
                                     @csrf
                                     <input type="hidden" name="type" value="{{ $type }}">

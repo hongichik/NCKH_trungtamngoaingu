@@ -42,6 +42,7 @@ return [
     | Có thể thêm bảng qua DB_SYNC_EXCLUDE (cách nhau bởi dấu phẩy).
     */
     'excluded_tables' => array_values(array_unique(array_merge([
+        // Bảng hệ thống, riêng của từng máy
         'migrations',
         'sessions',
         'cache',
@@ -50,7 +51,38 @@ return [
         'job_batches',
         'failed_jobs',
         'password_reset_tokens',
+        // Hàng đợi & lượt dùng AI: riêng của từng máy
+        'ai_jobs',
+        'ai_usage',
     ], array_filter(array_map('trim', explode(',', (string) env('DB_SYNC_EXCLUDE', ''))))))),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Bảng được bảo vệ (chỉ KÉO về, không bao giờ bị ĐẨY lên ghi đè)
+    |--------------------------------------------------------------------------
+    | Dữ liệu giáo viên tạo trên máy chủ (file nằm ở storage/app/private của máy chủ).
+    | db:sync-pull kéo được về máy local để kiểm tra; db:sync-push / API nhập dữ liệu
+    | trên máy chủ mặc định bỏ qua các bảng này — chỉ ghi đè khi chạy
+    | db:sync-push --include-protected (đồng bộ trọn vẹn CSDL).
+    */
+    'protected_tables' => [
+        'teachers',
+        'textbooks',
+        'textbook_pages',
+        'textbook_units',
+        'textbook_chunks',
+        'unit_profiles',
+        'audio_tracks',
+        'courses',
+        'exercise_sets',
+        'questions',
+        'exercise_attempts',
+        'unit_tests',
+        'classrooms',
+        'classroom_student',
+        'assignments',
+        'tts_cache',
+    ],
 
     /*
     |--------------------------------------------------------------------------

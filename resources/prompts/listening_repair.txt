@@ -1,0 +1,19 @@
+Some questions of this LISTENING section failed quality checks. Fix them.
+
+Script:
+<source>
+{{script}}
+</source>
+
+Current questions (JSON):
+{{questions_json}}
+
+Problems found:
+{{issues}}
+
+Return ONLY the replacement or missing questions (same id when replacing):
+- mcq: 4 options "A. ..." to "D. ...", answer is only the letter.
+- gap_fill: prompt contains "____", options [], answer is 1-3 words that appear EXACTLY in the script.
+- explanation in Vietnamese; "evidence" is "".
+
+Return JSON: {"questions": [ ... ]}

@@ -1,0 +1,5 @@
+This is a connection test from the centre's website.
+Reply with:
+- "reply_vi": one short friendly sentence in Vietnamese confirming you are working.
+- "word": one useful English word for beginners.
+- "meaning_vi": its Vietnamese meaning.

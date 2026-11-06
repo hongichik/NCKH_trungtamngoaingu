@@ -1,0 +1,4 @@
+The attached image is one page of a language textbook (main language: {{language}}).
+Transcribe ALL text on the page exactly, in reading order. Keep line breaks between paragraphs, keep dialogue labels (e.g. "A:", "B:", "甲：") and numbering of exercises. For tables, put each row on its own line with cells separated by " | ".
+Do not translate, correct or summarise. Do not describe pictures.
+Return JSON: {"text": "..."}

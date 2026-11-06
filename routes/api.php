@@ -13,6 +13,7 @@ Route::prefix('db-sync')->group(function () {
         Route::get('export', [DbSyncController::class, 'export']);
         Route::post('chunk', [DbSyncController::class, 'chunk']);
         Route::post('commit', [DbSyncController::class, 'commit']);
+        Route::post('run', [DbSyncController::class, 'run'])->middleware('throttle:10,1');
     });
 
     // Đồng bộ thư mục

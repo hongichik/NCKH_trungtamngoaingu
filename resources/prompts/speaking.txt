@@ -1,0 +1,18 @@
+Create a SPEAKING section for {{language}} learners (level: {{level}}), unit "{{unit_title}}", topic "{{topic}}".
+What the unit teaches (Vietnamese summary): {{summary}}
+
+Unit vocabulary and grammar — every task must give learners a natural chance to USE them:
+{{unit_json}}
+
+Create {{task_count}} speaking tasks (ids S1, S2, ...) from easy to harder, in this order of "task_type": personal (answer questions about yourself), describe (describe / explain something related to the topic), opinion (give an opinion with reasons), roleplay (a short situation with a role). If fewer tasks are requested, keep the easiest types first.
+
+For each task:
+- "prompt": the task instructions for the learner, written in {{language}}{{zh_note}}.
+- "level": recognition | comprehension | application.
+- "ideas_vi": 3-4 short idea hints in Vietnamese.
+- "useful_language": 4-6 key phrases from the unit to use.
+- "sample_answer": a natural model answer at the target level (40-80 words English / 50-100 characters Chinese).
+- "simple_sample_answer": an easier model answer for weaker learners.
+- "time_seconds": suggested speaking time (30-90).
+
+Return JSON: {"tasks": [{"id": "S1", "task_type": "", "level": "", "prompt": "", "ideas_vi": [], "useful_language": [], "sample_answer": "", "simple_sample_answer": "", "time_seconds": 60}]}

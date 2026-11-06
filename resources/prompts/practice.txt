@@ -1,0 +1,11 @@
+A Vietnamese learner of {{language}} got these questions WRONG (with the correct answer and explanation):
+{{mistakes_json}}
+
+Write {{count}} NEW practice questions that train exactly the same knowledge points (same vocabulary / grammar / reading skill), one or two per mistake, at the same difficulty. Do NOT copy the original questions; change the sentences and contexts. Each question must be self-contained (no reference to a passage the learner cannot see).
+
+For each question:
+- "type": "mcq" (4 options "A. ...", "B. ...", "C. ...", "D. ..."; answer = the letter), "true_false" (options []; answer "True" or "False"; the prompt is a statement to judge), or "gap_fill" (prompt contains "____"; options []; answer = the exact word(s) that fill the gap, short and unambiguous).
+- "prompt": in {{language}}{{zh_note}}.
+- "explanation_vi": a short explanation in Vietnamese of why the answer is correct, referring to the knowledge point.
+- "focus_vi": the knowledge point being practised, in Vietnamese (a few words).
+Exactly one correct answer per question.

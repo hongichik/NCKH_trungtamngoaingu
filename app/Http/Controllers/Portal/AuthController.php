@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -36,6 +37,13 @@ class AuthController extends Controller
             'type' => ['nullable', Rule::in(['hsk', 'cntt'])],
         ]);
 
+        // Chặn tạo tài khoản hàng loạt từ một IP.
+        $key = 'portal-register:'.$request->ip();
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            return back()->withErrors(['email' => 'Bạn đã đăng ký quá nhiều lần, thử lại sau '.ceil(RateLimiter::availableIn($key) / 60).' phút.'])->withInput();
+        }
+        RateLimiter::hit($key, 3600);
+
         $student = Student::create([
             'last_name' => $data['full_name'],
             'email' => $data['email'],
@@ -58,12 +66,28 @@ class AuthController extends Controller
             'type' => ['nullable', Rule::in(['hsk', 'cntt'])],
         ]);
 
+        // Chống dò mật khẩu: tối đa 8 lần sai / 10 phút cho mỗi IP + email.
+        $key = 'portal-login:'.$request->ip().'|'.mb_strtolower($credentials['email']);
+        if (RateLimiter::tooManyAttempts($key, 8)) {
+            return back()->withErrors(['email' => 'Đăng nhập sai quá nhiều lần, thử lại sau '.ceil(RateLimiter::availableIn($key) / 60).' phút.'])->onlyInput('email');
+        }
+
         if (! Auth::guard('student')->attempt([
             'email' => $credentials['email'],
             'password' => $credentials['password'],
         ], true)) {
+            RateLimiter::hit($key, 600);
+
             return back()->withErrors(['email' => 'Email hoặc mật khẩu không đúng.'])->onlyInput('email');
         }
+        RateLimiter::clear($key);
+        // Tài khoản bị khoá (quản trị viên khoá ở trang Tài khoản học viên).
+        if (Auth::guard('student')->user()->login_locked) {
+            Auth::guard('student')->logout();
+
+            return back()->withErrors(['email' => 'Tài khoản đã bị khoá. Liên hệ trung tâm để được mở lại.'])->onlyInput('email');
+        }
+        Auth::guard('student')->user()->forceFill(['last_login_at' => now()])->saveQuietly();
 
         $request->session()->regenerate();
 
@@ -86,6 +110,11 @@ class AuthController extends Controller
 
         if ($intended = $request->session()->pull('url.intended')) {
             return redirect()->to($intended);
+        }
+
+        // Học viên có lớp học: về trang chủ cổng (lịch học, bài tập) — không ép khai hồ sơ thi.
+        if (! $type && $student->classrooms()->exists()) {
+            return redirect()->route('portal.home');
         }
 
         if (! $student->hasCompletedCoreProfile()) {

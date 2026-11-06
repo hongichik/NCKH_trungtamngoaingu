@@ -1,0 +1,12 @@
+{
+  "name": "tutorial-videos",
+  "private": true,
+  "type": "module",
+  "description": "Tự quay video hướng dẫn (Playwright) + giọng đọc AI (OpenAI TTS) cho quản trị viên, giáo viên, học viên, thí sinh",
+  "scripts": {
+    "record": "node record.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.48.2"
+  }
+}

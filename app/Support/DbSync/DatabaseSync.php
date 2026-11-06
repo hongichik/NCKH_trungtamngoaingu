@@ -33,9 +33,12 @@ class DatabaseSync
      *
      * @return list<string>
      */
-    public function syncableTables(): array
+    public function syncableTables(bool $includeProtected = false): array
     {
-        $excluded = config('dbsync.excluded_tables', []);
+        $excluded = array_merge(
+            config('dbsync.excluded_tables', []),
+            $includeProtected ? [] : config('dbsync.protected_tables', []),
+        );
 
         return collect(Schema::getTables())
             ->pluck('name')
@@ -52,9 +55,9 @@ class DatabaseSync
      * @param  list<string>  $except
      * @return list<string>
      */
-    public function resolveTables(array $only = [], array $except = []): array
+    public function resolveTables(array $only = [], array $except = [], bool $includeProtected = false): array
     {
-        $tables = $this->syncableTables();
+        $tables = $this->syncableTables($includeProtected);
 
         if ($only) {
             $unknown = array_diff($only, $tables);
@@ -282,9 +285,10 @@ class DatabaseSync
      * @param  list<string>  $paths
      * @return array{tables: array<string,int>, skipped: list<string>, backup: string|null}
      */
-    public function import(array $paths, bool $backup = true): array
+    public function import(array $paths, bool $backup = true, bool $includeProtected = false): array
     {
-        $allowed = $this->syncableTables();
+        // Mặc định KHÔNG nhập bảng được bảo vệ (dữ liệu giáo viên trên máy chủ); chỉ db:sync-pull ở máy local mới bật.
+        $allowed = $this->syncableTables($includeProtected);
         $declared = $this->tablesIn($paths);
 
         $tables = array_values(array_intersect($declared, $allowed));

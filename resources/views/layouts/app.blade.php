@@ -94,6 +94,8 @@
     </script>
 
     <style>
+        /* Hiệu ứng trượt vào (AOS) đẩy khối ra ngoài màn hình trước khi chạy → không cho tạo thanh cuộn ngang */
+        html, body { overflow-x: clip; }
         :root {
             /* Sampled from the center's official emblem (navy ring + orange accent) */
             /* Editable in Admin > Cài đặt website; darker shades are derived automatically. */
@@ -256,6 +258,14 @@
                             <li class="nav-item"><a class="nav-link {{ $menuItem->isActive() ? 'active' : '' }}" href="{{ $menuItem->url }}" @if ($menuItem->open_new_tab) target="_blank" rel="noopener" @endif>{{ $menuItem->title }}</a></li>
                         @endif
                     @endforeach
+                    {{-- Lối vào cho học viên / thí sinh đã có tài khoản (các mục trên là menu quản trị tự cấu hình) --}}
+                    <li class="nav-item ms-lg-2 d-flex align-items-center py-2 py-lg-0">
+                        @if (auth('student')->check())
+                            <a href="{{ route('portal.home') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-person-circle me-1"></i>{{ Str::limit(auth('student')->user()->full_name, 18) }}</a>
+                        @else
+                            <a href="{{ route('portal.auth') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-in-right me-1"></i>Đăng nhập</a>
+                        @endif
+                    </li>
                 </ul>
             </div>
         </div>

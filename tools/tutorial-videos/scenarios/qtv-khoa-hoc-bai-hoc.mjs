@@ -1,0 +1,42 @@
+// Video quản trị 5: Khoá học → Bài học → Bài tập (AI tạo, tải file cho AI dựng, soạn tay)
+export default (d) => {
+    const en = d.courses.en, lesson = en.lessons[1], ex = lesson.exercises[0];
+    return {
+        slug: 'qtv-khoa-hoc-bai-hoc',
+        title: 'Quản trị viên — Khoá học, bài học & bài tập',
+        scenes: [
+            { caption: false, say: 'Xin chào! Video này hướng dẫn xây dựng chương trình học trực tuyến theo mô hình Khoá học, Bài học, Bài tập: tạo khoá, soạn bài học với video và tài liệu, và để AI tạo bài tập có chấm điểm tự động.',
+                do: async (t) => { await t.card('Quản trị viên', 'Khoá học · Bài học · Bài tập', 'Tạo khoá · Soạn bài · Video, tài liệu · AI tạo bài tập · Thư viện bài tập'); await t.goto('/admin/login'); } },
+            { say: 'Đăng nhập trang quản trị và vào mục Khoá học. Danh sách cho biết ngôn ngữ, trình độ, giáo viên được sửa khoá và số lớp đang học. Có thể tìm theo tên và lọc theo ngôn ngữ.',
+                do: async (t) => { await t.hideCard(); await t.login('/admin/login', 'demo.admin' + d.domain, d.password); await t.nav('/admin/courses'); await t.point('input[name=q]', 800); await t.point('select[name=language]', 800); await t.point(`text=${en.title}`, 1000); } },
+            { say: 'Bấm Tạo khoá học: nhập tên, trình độ, ngôn ngữ Anh hoặc Trung, mô tả, ảnh bìa, và chọn những giáo viên được quyền soạn bài cho khoá. Bật Xuất bản khi sẵn sàng mở lớp.',
+                do: async (t) => { await t.goto('/admin/courses/create'); await t.type('input[name=title]', 'Tiếng Anh giao tiếp B1', { delay: 40 }); await t.point('input[name=level]', 700); await t.point('select[name=language]', 700); await t.point('input[name=cover]', 700); await t.point('text=Giáo viên được sửa khoá', 1000); await t.point('input[name=is_published]', 800); } },
+            { say: 'Mở khoá đã có. Ba thẻ ở trên: Thông tin, Bài học và bài tập, Lớp của khoá. Danh sách bài học sắp theo thứ tự học, kéo thả để đổi thứ tự rồi bấm Lưu thứ tự.',
+                do: async (t) => { await t.goto(`/admin/courses/${en.id}/lessons`); await t.point('a:has-text("Thông tin")', 700); await t.point('a:has-text("Lớp của khoá")', 700); await t.point('#lesson-order', 1200); await t.point('button:has-text("Lưu thứ tự")', 800); } },
+            { say: 'Thêm bài học mới chỉ cần tên và tóm tắt. Nút AI lập từ vựng cho các bài chưa có sẽ chạy nền, tự lập danh sách từ vựng cho toàn khoá.',
+                do: async (t) => { await t.point('.card-title:has-text("Thêm bài học")', 800); await t.type('.card:has(.card-title:has-text("Thêm bài học")) input[name=title]', 'Unit 5 — Shopping', { delay: 45 }); await t.point('button:has-text("Tạo bài học")', 900); await t.scrollTop(); const v = t.page.locator('button:has-text("AI lập từ vựng")'); if (await v.count()) await t.point(v.first(), 1200); } },
+            { say: 'Mở một bài học. Khối Nội dung bài học gồm tên, tóm tắt, ghi chú từ vựng, ngữ pháp và tuỳ chọn bắt buộc xem video trước khi làm bài. Bấm Lưu sau khi sửa.',
+                do: async (t) => { await t.goto(`/admin/courses/${en.id}/lessons/${lesson.id}`); await t.point('text=Nội dung bài học', 1000); await t.point('input[name=title]', 600); await t.point('textarea[name=summary]', 600); await t.point('input[name=require_video]', 900); } },
+            { say: 'Khối Video hướng dẫn: tải video từ máy, hệ thống tự chia nhỏ file để vượt giới hạn tải lên của hosting, phát theo đoạn và chống tải về. Hoặc nhúng video từ dịch vụ ngoài. Khối Tài liệu nhận PDF, ảnh, Word, PowerPoint.',
+                do: async (t) => { await t.point('text=Video hướng dẫn', 1000); await t.point('#v-file', 900); await t.point('text=Tài liệu (PDF, ảnh, Word…)', 1000); await t.point('input[name=file]', 900); } },
+            { say: 'Khối Từ vựng của bài: mỗi dòng là một từ, phiên âm hoặc từ loại, nghĩa và câu ví dụ. AI lập sẵn từ nội dung bài, bạn chỉnh rồi bấm Lưu từ vựng. Học viên ôn bằng thẻ ghi nhớ với lịch nhắc thông minh.',
+                do: async (t) => { await t.point('text=Từ vựng của bài', 1000); await t.point('#vocabulary textarea', 1200); await t.point('button:has-text("Lưu từ vựng")', 800); } },
+            { say: 'Khối AI tự tạo bài tập: nhập số câu hỏi cho từng kỹ năng đọc, nghe, nói, viết, từ vựng, ngữ pháp, chọn nguồn nội dung rồi bấm Tạo. AI soạn câu hỏi mới dựa trên bài học, có đáp án và lời giải. Bài tạo xong ở trạng thái nháp để bạn duyệt.',
+                do: async (t) => { await t.scrollTop(); await t.point('text=AI tự tạo bài tập', 1000); await t.point('#ai-compose', 1200); const b = t.page.locator('#ai-compose button:has-text("Tạo")').first(); if (await b.count()) await t.point(b, 800); } },
+            { say: 'Nếu đã có đề trên giấy hoặc file Word, chọn Tải file bài tập cho AI dựng: tải đề, ảnh chụp và file nghe. AI đọc đề, chép lời file nghe rồi dựng thành bài tập có chấm điểm. Bản dựng chờ ở trạng thái Chờ duyệt, bấm Duyệt và lưu để thành bài tập.',
+                do: async (t) => { await t.goto(`/admin/courses/${en.id}/ai-import?lesson=${lesson.id}`); await t.point('#ai-doc', 1200); await t.point('#ai-audio', 1000); await t.scroll(300, { ms: 1200 }); } },
+            { say: 'Khối Bài tập của bài học liệt kê các bài của bài học này cùng số lượt làm. Bấm Soạn bài tập để tự soạn từng phần theo dạng câu hỏi có sẵn.',
+                do: async (t) => { await t.goto(`/admin/courses/${en.id}/lessons/${lesson.id}`); await t.point('text=Bài tập của bài học', 1000); await t.point('button:has-text("Soạn bài tập")', 1000); } },
+            { say: 'Đây là trang soạn một bài tập. Thông tin bài: tên, kỹ năng, bài học, giới hạn thời gian, trạng thái Nháp, Dùng được hay Ẩn, và đánh dấu bài chuẩn. Mỗi phần bên dưới là một dạng câu hỏi với điểm, cách trừ điểm và chấm từng phần.',
+                do: async (t) => { await t.goto(`/admin/courses/${en.id}/custom-exercises/${ex}`); await t.point('text=Thông tin bài', 900); await t.point('select[name=status]', 800); await t.point('input[name=time_limit_minutes]', 700); await t.scroll(450, { ms: 1400 }); await t.point('input[name=points]', 800); } },
+            { say: 'Nút AI ở từng phần: dựng lại câu hỏi theo yêu cầu, hoặc tạo giọng đọc AI cho bài nghe. Thêm phần để chọn dạng câu hỏi mới. Xem như học viên để kiểm tra; Nhân bản để tạo bản sao chỉnh riêng cho lớp khác.',
+                do: async (t) => { await t.scrollTop(); await t.point('button:has-text("AI")', 1000); await t.point('text=Thêm phần', 900); await t.point('a:has-text("Xem như học viên")', 900); await t.point('button:has-text("Nhân bản"), a:has-text("Nhân bản")', 900); } },
+            { say: 'Bài đã có học viên làm vẫn sửa được; điểm đã nộp giữ nguyên. Nếu sửa đáp án, bấm Chấm lại bài đã nộp để tính lại. Bài đã có lượt làm thì chỉ ẩn, không xoá, để bảo toàn kết quả.',
+                do: async (t) => { const b = t.page.locator('button:has-text("Chấm lại bài đã nộp")').first(); if (await b.count()) await t.point(b, 1500); else await t.point('select[name=status]', 1200); } },
+            { say: 'Thẻ Bài tập tuỳ chỉnh của khoá là thư viện chung: tìm, lọc theo kỹ năng, dạng bài, người tạo; thêm bài vào lớp; nhân bản. Lớp mới cùng khoá dùng lại ngay, không phải soạn lại.',
+                do: async (t) => { await t.goto(`/admin/courses/${en.id}/custom-exercises`); await t.scroll(300, { ms: 1200 }); } },
+            { caption: false, say: 'Bạn đã nắm được cách xây dựng khoá học hoàn chỉnh. Video tiếp theo: mở lớp, cấp tài khoản học viên và phân quyền giáo viên.',
+                do: async (t) => { await t.card('Cảm ơn bạn đã theo dõi', 'Khoá học · Bài học · Bài tập', 'Tiếp theo: Lớp học · Tài khoản học viên · Giáo viên'); } },
+        ],
+    };
+};

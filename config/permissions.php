@@ -22,5 +22,7 @@ return [
         'menus' => ['label' => 'Menu website', 'actions' => ['view', 'create', 'edit', 'delete']],
         'banners' => ['label' => 'Banner trang chủ', 'actions' => ['view', 'create', 'edit', 'delete']],
         'settings' => ['label' => 'Cài đặt website', 'actions' => ['view', 'edit']],
+        'teachers' => ['label' => 'Tài khoản giáo viên', 'actions' => ['view', 'create', 'edit', 'delete']],
+        'learning' => ['label' => 'Khoá học & lớp học', 'actions' => ['view', 'create', 'edit', 'delete']],
     ],
 ];

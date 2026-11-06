@@ -15,6 +15,7 @@ class DbSyncPush extends Command
         {--tables=* : Chỉ đẩy các bảng này (vd: --tables=posts --tables=pages)}
         {--exclude=* : Bỏ qua các bảng này}
         {--no-migrate : Không chạy migrate trên máy chủ trước khi nhập}
+        {--include-protected : Đẩy cả các bảng được bảo vệ (giáo viên, khoá học, lớp, giáo trình...) — ghi đè dữ liệu tương ứng trên máy chủ}
         {--url= : Ghi đè DB_SYNC_REMOTE_URL}
         {--force : Không hỏi xác nhận}';
 
@@ -32,7 +33,7 @@ class DbSyncPush extends Command
         }
 
         try {
-            $tables = $sync->resolveTables($this->option('tables'), $this->option('exclude'));
+            $tables = $sync->resolveTables($this->option('tables'), $this->option('exclude'), (bool) $this->option('include-protected'));
         } catch (InvalidArgumentException $e) {
             $this->error($e->getMessage());
 
@@ -42,6 +43,9 @@ class DbSyncPush extends Command
         $this->line("Máy chủ đích: <info>{$url}</info>");
         $this->line('Số bảng sẽ đẩy: <info>'.count($tables).'</info> ('.implode(', ', $tables).')');
         $this->warn('Dữ liệu các bảng này trên MÁY CHỦ sẽ bị thay thế hoàn toàn (máy chủ tự sao lưu trước khi ghi).');
+        if ($this->option('include-protected')) {
+            $this->warn('Bao gồm cả các bảng được bảo vệ: '.implode(', ', array_intersect($tables, config('dbsync.protected_tables', []))));
+        }
 
         if (! $this->option('force') && ! $this->confirm('Tiếp tục?')) {
             return self::SUCCESS;
@@ -75,7 +79,7 @@ class DbSyncPush extends Command
 
             $this->line('Máy chủ đang nhập dữ liệu...');
             $res = $this->client($token)
-                ->post("{$url}/api/db-sync/commit?id={$id}&migrate=".($this->option('no-migrate') ? 0 : 1));
+                ->post("{$url}/api/db-sync/commit?id={$id}&migrate=".($this->option('no-migrate') ? 0 : 1).'&include_protected='.($this->option('include-protected') ? 1 : 0));
         } finally {
             File::deleteDirectory($tmp);
         }

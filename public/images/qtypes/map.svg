@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" font-family="Arial, sans-serif" font-size="14">
+  <rect width="600" height="400" fill="#e8f3e2"/>
+  <path d="M0 200 H600 M300 0 V400" stroke="#fff" stroke-width="28"/>
+  <path d="M0 200 H600 M300 0 V400" stroke="#d6d6d6" stroke-width="2" stroke-dasharray="10 8"/>
+  <rect x="70" y="50" width="100" height="60" fill="#c9b79c" stroke="#8a7a62"/>
+  <rect x="285" y="40" width="90" height="70" fill="#d9d2c5" stroke="#8a7a62"/>
+  <ellipse cx="470" cy="300" rx="110" ry="60" fill="#9fd0f0" stroke="#5a9cc8"/>
+  <rect x="420" y="250" width="60" height="40" fill="#f3c98b" stroke="#a87c3c"/>
+  <rect x="50" y="280" width="120" height="70" fill="#cfcfcf" stroke="#888"/>
+  <g stroke="#888"><path d="M70 280 v70 M90 280 v70 M110 280 v70 M130 280 v70 M150 280 v70"/></g>
+  <circle cx="288" cy="208" r="26" fill="#bfe3a8" stroke="#6aa84f"/>
+  <text x="300" y="390" text-anchor="middle" fill="#555">N ↑ · Riverside Park</text>
+  <text x="520" y="350" fill="#2b6a99">lake</text>
+</svg>

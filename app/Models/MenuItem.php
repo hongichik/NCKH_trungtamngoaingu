@@ -96,18 +96,22 @@ class MenuItem extends Model
         switch ($this->link_type) {
             case 'route':
                 $def = $this->routeDefinition();
+
                 return $def && Route::has($def['route']) ? route($def['route'], $def['params'] ?? []) : '#';
             case 'page':
                 $slug = $this->resolved_slug ?? Page::find($this->link_value)?->slug;
+
                 return $slug ? route('public.show', $slug) : '#';
             case 'category':
                 $slug = $this->resolved_slug ?? Category::find($this->link_value)?->slug;
+
                 return $slug ? route('category.show', $slug) : '#';
             default:
                 $value = trim((string) $this->link_value);
                 if ($value === '') {
                     return '#';
                 }
+
                 // Allow "/lien-he", "#section", "tel:", "mailto:" and full URLs.
                 return preg_match('~^(https?://|/|#|tel:|mailto:)~i', $value) ? $value : url($value);
         }
@@ -134,6 +138,7 @@ class MenuItem extends Model
                     return false;
                 }
             }
+
             return true;
         }
 

@@ -1,0 +1,30 @@
+// Video hướng dẫn: Nhân viên (tài khoản quản trị được cấp quyền theo từng chức năng)
+// Tài khoản demo.nhanvien@tutorial.local được tạo bằng: php artisan tinker (xem docs/huong-dan/README.md)
+export default (d) => ({
+    slug: 'nhan-vien',
+    title: 'Hướng dẫn dành cho Nhân viên',
+    scenes: [
+        { caption: false, say: 'Xin chào! Video này dành cho nhân viên trung tâm: tài khoản quản trị chỉ được cấp một số quyền nhất định, như đăng bài viết, trả lời liên hệ, xác nhận lệ phí thi và quản lý chứng chỉ.',
+            do: async (t) => { await t.card('Hướng dẫn sử dụng', 'Nhân viên', 'Bài viết · Liên hệ · Đăng ký dự thi · Chứng chỉ · Học viên'); await t.goto('/admin/login'); } },
+        { say: 'Nhân viên đăng nhập ở trang quản trị, bằng email và mật khẩu do quản trị viên cấp.',
+            do: async (t) => { await t.hideCard(); await t.login('/admin/login', 'demo.nhanvien' + d.domain, d.password); } },
+        { say: 'Trang Tổng quan chỉ hiện các số liệu thuộc chức năng bạn được giao. Menu bên trái cũng vậy: chức năng nào không được cấp quyền thì không xuất hiện, ví dụ Giáo viên, Khoá học hay Người dùng.',
+            do: async (t) => { await t.point('text=Bài viết', 1000); await t.point('text=Liên hệ chưa đọc', 1000); await t.point('aside.navbar-vertical', 1800); } },
+        { say: 'Mục Bài viết quản lý tin tức trên website. Bạn tìm theo tiêu đề, lọc theo trạng thái nháp hay đã xuất bản, và bấm Thêm bài viết để đăng bài mới.',
+            do: async (t) => { await t.nav('/admin/posts'); await t.point('input[name=q]', 900); await t.point('a:has-text("Nháp")', 900); await t.point('a:has-text("Thêm bài viết")', 1200); } },
+        { say: 'Trong biểu mẫu, nhập tiêu đề, chọn danh mục, soạn nội dung bằng trình soạn thảo có chèn ảnh, rồi chọn Lưu nháp hoặc Xuất bản. Ảnh kéo thả vào bài sẽ tự được nén để tải nhanh.',
+            do: async (t) => { await t.goto('/admin/posts/create'); await t.type('input[name=title]', 'Lịch khai giảng lớp tiếng Anh giao tiếp tháng tới', { delay: 40 }); await t.scroll(350, { ms: 1200 }); await t.point('text=Xuất bản', 1000); } },
+        { say: 'Mục Liên hệ nhận câu hỏi khách gửi từ website. Liên hệ chưa đọc được đánh dấu nổi bật. Bấm vào một liên hệ để xem nội dung.',
+            do: async (t) => { await t.nav('/admin/contacts'); const row = t.page.locator('a[href*="/admin/contacts/"]').first(); if (await row.count()) await t.click(row, { wait: 800 }); } },
+        { say: 'Nếu được cấp quyền Phản hồi, bạn gõ câu trả lời vào ô Phản hồi và bấm Gửi phản hồi. Nội dung trả lời được lưu lại để đồng nghiệp cùng theo dõi.',
+            do: async (t) => { const box = t.page.locator('textarea[name=message]'); if (await box.count()) { await t.type(box, 'Chào bạn, trung tâm khai giảng lớp mới vào đầu tháng tới. Bạn vui lòng để lại số điện thoại để được tư vấn chi tiết.', { delay: 25 }); await t.point('text=Gửi phản hồi', 1200); } } },
+        { say: 'Mục Đăng ký dự thi liệt kê thí sinh đã đăng ký thi Tin học hoặc HSK. Lọc theo trạng thái để thấy ai còn chờ nộp lệ phí. Khi thí sinh đã nộp tiền, bấm Xác nhận thanh toán.',
+            do: async (t) => { await t.goto('/admin/exam-registrations?type=cntt'); await t.point('select[name=status]', 1000); const b = t.page.locator('text=Xác nhận thanh toán').first(); if (await b.count()) await t.point(b, 1500); else await t.scroll(300); } },
+        { say: 'Mục Học viên lưu hồ sơ thí sinh, tìm nhanh theo tên hoặc số căn cước. Mục Chứng chỉ dùng để nhập và tra cứu chứng chỉ theo số hiệu; thông tin này hiện ở trang tra cứu công khai của website.',
+            do: async (t) => { await t.nav('/admin/students'); await t.point('input[placeholder*="CCCD"]', 1200); await t.nav('/admin/certificates'); await t.point('input[placeholder*="số hiệu"]', 1200); } },
+        { say: 'Nếu mở một đường dẫn ngoài quyền được cấp, hệ thống báo Không có quyền truy cập. Khi cần thêm quyền, hãy liên hệ quản trị viên để được cấp trong mục Người dùng và phân quyền.',
+            do: async (t) => { await t.goto('/admin/users'); await t.point('text=Không có quyền truy cập', 1800); } },
+        { caption: false, say: 'Như vậy bạn đã nắm được các thao tác dành cho nhân viên. Chúc bạn làm việc hiệu quả!',
+            do: async (t) => { await t.card('Cảm ơn bạn đã theo dõi', 'Nhân viên', 'Mọi thắc mắc vui lòng liên hệ quản trị viên'); } },
+    ],
+});

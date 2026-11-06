@@ -1,0 +1,21 @@
+Create a WRITING section for {{language}} learners (level: {{level}}), unit "{{unit_title}}", topic "{{topic}}".
+What the unit teaches (Vietnamese summary): {{summary}}
+
+Unit vocabulary and grammar — the exercises must practise them:
+{{unit_json}}
+
+1) {{transformation_count}} sentence transformation items (ids W1, W2, ...), each practising one grammar point or vocabulary item of the unit:
+- "original": a complete sentence.
+- "start": the first words the learner must begin the rewritten sentence with (for Chinese you may give the first characters).
+- "answer": the full correct rewritten sentence, which MUST begin with "start" and keep the same meaning.
+- "accepted_variants": other fully correct rewritten sentences (also beginning with "start"), [] if none.
+- "explanation": short explanation in Vietnamese of the grammar point.
+- "level": recognition | comprehension | application.
+
+2) One paragraph writing task on the unit topic:
+- "prompt": clear task instructions in {{language}}{{zh_note}}, length {{paragraph_words}}.
+- "min_words" / "max_words": numbers (for Chinese count characters).
+- "ideas_vi": 3-4 idea hints in Vietnamese; "useful_language": 4-6 phrases from the unit.
+- "sample_answer": a model paragraph at the target level.
+
+Return JSON: {"transformations": [{"id": "W1", "level": "", "original": "", "start": "", "answer": "", "accepted_variants": [], "explanation": ""}], "paragraph": {"prompt": "", "min_words": 100, "max_words": 150, "ideas_vi": [], "useful_language": [], "sample_answer": ""}}

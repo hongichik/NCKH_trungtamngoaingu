@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountLog;
 use App\Models\Student;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -17,10 +19,22 @@ class ProfileController extends Controller
     {
         /** @var Student $student */
         $student = Auth::guard('student')->user();
+        $type = in_array($request->query('type'), ['hsk', 'cntt'], true) ? $request->query('type') : null;
+
+        // Mục IV (HSK) mặc định ẩn: chỉ hiện khi vào từ "Bổ sung ngay" của đăng ký thi HSK.
+        // Đã hiện một lần thì giữ hiện (nhớ trong session, hoặc đã có dữ liệu HSK).
+        if ($type === 'hsk') {
+            $request->session()->put('profile_show_hsk', true);
+        }
+
+        $showHsk = $request->session()->get('profile_show_hsk', false)
+            || collect(['chinese_name', 'birthplace', 'ethnic', 'religion', 'chinese_years'])
+                ->contains(fn ($f) => filled($student->{$f}));
 
         return view('portal.profile', [
             'student' => $student,
-            'type' => in_array($request->query('type'), ['hsk', 'cntt'], true) ? $request->query('type') : null,
+            'type' => $type,
+            'showHsk' => $showHsk,
         ]);
     }
 
@@ -82,5 +96,27 @@ class ProfileController extends Controller
 
         return redirect()->route('portal.profile.edit', $type ? ['type' => $type] : [])
             ->with('status', 'Đã lưu thông tin thí sinh.');
+    }
+
+    /** Đổi mật khẩu (bắt buộc ở lần đăng nhập đầu với tài khoản được tạo sẵn). */
+    public function password(): View
+    {
+        return view('portal.password', ['forced' => (bool) auth('student')->user()->must_change_password]);
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $student = auth('student')->user();
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:6', 'confirmed', 'different:current_password'],
+        ], ['password.different' => 'Mật khẩu mới phải khác mật khẩu hiện tại.', 'password.confirmed' => 'Nhập lại mật khẩu chưa khớp.']);
+        if (! Hash::check($data['current_password'], (string) $student->password)) {
+            return back()->withErrors(['current_password' => 'Mật khẩu hiện tại không đúng.']);
+        }
+        $student->forceFill(['password' => $data['password'], 'must_change_password' => false])->save();
+        AccountLog::record('change_password', $student->id);
+
+        return redirect()->route('portal.home')->with('status', 'Đã đổi mật khẩu.');
     }
 }

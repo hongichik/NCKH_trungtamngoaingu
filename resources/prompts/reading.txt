@@ -1,0 +1,20 @@
+Create a READING section for {{language}} learners (level: {{level}}), unit "{{unit_title}}", topic "{{topic}}".
+Difficulty mix: {{levels}}.
+
+Passage to use:
+{{passage_block}}
+
+Unit vocabulary and grammar (use them when writing new text or distractors):
+{{unit_json}}
+
+Create exactly:
+{{plan_text}}
+
+Rules:
+- For mcq and cloze, "answer" is only the letter (e.g. "B").
+- For mcq and true_false, "evidence" must be copied EXACTLY, word for word, from the passage (one sentence or clause). Use "" for cloze/ordering.
+- Questions and options are written in {{language}}{{zh_note}}. "explanation" is in Vietnamese, short.
+- Each question has "level": recognition | comprehension | application.
+- If a passage is given above, return it unchanged in "passage". If no passage is given, write a new passage of about {{passage_words}} words on the topic using at least 8 unit vocabulary items.
+
+Return JSON: {"passage": "", "cloze_passage": "", "questions": [{"id": "R1", "type": "mcq | true_false | cloze | ordering", "level": "", "prompt": "", "options": [], "answer": "", "evidence": "", "explanation": ""}]}

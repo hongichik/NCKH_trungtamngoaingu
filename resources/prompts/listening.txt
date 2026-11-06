@@ -1,0 +1,20 @@
+Create a LISTENING section for {{language}} learners (level: {{level}}), unit "{{unit_title}}", topic "{{topic}}".
+Difficulty mix: {{levels}}.
+
+Script to use:
+{{script_block}}
+
+Unit vocabulary and grammar:
+{{unit_json}}
+
+If a script is given above, return it unchanged in "script" (same speakers and lines) and list its speakers. If no script is given, write a natural dialogue between 2 speakers (or a short talk), {{script_words}}, on the topic, using at least 6 unit vocabulary items; no stage directions inside lines.
+
+Create exactly:
+{{plan_text}}
+
+Rules:
+- mcq: answer is only the letter.
+- gap_fill: the answer must appear EXACTLY in the script.
+- Questions and options are in {{language}}{{zh_note}}. "explanation" in Vietnamese, short. Each question has "level": recognition | comprehension | application. "evidence" is "" for listening.
+
+Return JSON: {"speakers": [{"name": "", "voice": "female | male"}], "script": [{"speaker": "", "text": ""}], "questions": [{"id": "L1", "type": "mcq | gap_fill", "level": "", "prompt": "", "options": [], "answer": "", "evidence": "", "explanation": ""}]}

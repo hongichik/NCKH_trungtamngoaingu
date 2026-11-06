@@ -14,6 +14,7 @@ class DbSyncPull extends Command
         {--tables=* : Chỉ kéo các bảng này}
         {--exclude=* : Bỏ qua các bảng này}
         {--url= : Ghi đè DB_SYNC_REMOTE_URL}
+        {--no-teacher-data : Không kéo dữ liệu giáo viên / giáo trình (bảng được bảo vệ)}
         {--force : Không hỏi xác nhận}';
 
     protected $description = 'Kéo dữ liệu CSDL từ máy chủ về máy này (ghi đè dữ liệu local)';
@@ -52,6 +53,8 @@ class DbSyncPull extends Command
                 ->get($url.'/api/db-sync/export', array_filter([
                     'tables' => $this->option('tables') ?: null,
                     'exclude' => $this->option('exclude') ?: null,
+                    // Kéo cả dữ liệu giáo viên / giáo trình (bảng được bảo vệ) để kiểm tra ở máy local
+                    'include_protected' => $this->option('no-teacher-data') ? null : 1,
                 ]));
 
             if (! $response->successful()) {
@@ -73,7 +76,7 @@ class DbSyncPull extends Command
             }
 
             $this->line('Đang nhập dữ liệu...');
-            $result = $sync->import([$file]);
+            $result = $sync->import([$file], true, ! $this->option('no-teacher-data'));
         } catch (Throwable $e) {
             $this->error('Thất bại, dữ liệu local không thay đổi: '.$e->getMessage());
 

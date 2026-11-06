@@ -1,0 +1,21 @@
+Some questions of this READING section failed quality checks. Fix them.
+
+Passage:
+<source>
+{{passage}}
+</source>
+{{cloze_block}}
+Current questions (JSON):
+{{questions_json}}
+
+Problems found:
+{{issues}}
+
+Return ONLY the replacement or missing questions (same id when replacing; use the ids given for missing ones), same rules:
+- mcq / cloze: 4 options "A. ..." to "D. ...", answer is only the letter.
+- true_false: options ["True", "False"].
+- ordering: options "a. ..." ... "e. ...", answer like "c-a-e-b-d".
+- evidence for mcq / true_false copied EXACTLY, word for word, from the passage.
+- explanation in Vietnamese.
+
+Return JSON: {"questions": [ ... ]}

@@ -17,6 +17,10 @@
         @endif
 
         <form method="POST" action="{{ route('contact.store') }}" style="max-width: 600px;">
+            {{-- Bẫy bot: người thật không thấy và không điền --}}
+            <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+                <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+            </div>
             @csrf
             <div class="mb-3">
                 <label class="form-label">Họ tên</label>

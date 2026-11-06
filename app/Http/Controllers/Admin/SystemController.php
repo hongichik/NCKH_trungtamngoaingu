@@ -3,7 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AiJob;
 use App\Models\User;
+use App\Support\Ai\Ai;
+use App\Support\Ai\AiException;
+use App\Support\Ai\AiLimiter;
+use App\Support\Ai\Jobs\AiJobRunner;
+use App\Support\Ai\Jobs\PingJob;
 use App\Support\DbSync\DatabaseSync;
 use App\Support\DbSync\FileSync;
 use App\Support\EnvEditor;
@@ -25,6 +31,8 @@ class SystemController extends Controller
     public const TABS = [
         'overview' => ['Tổng quan', 'ti-dashboard'],
         'config' => ['Cấu hình', 'ti-adjustments'],
+        'ai' => ['AI', 'ti-sparkles'],
+        'question-types' => ['Thư viện dạng bài', 'ti-forms'],
         'sync' => ['Đồng bộ', 'ti-refresh'],
         'backups' => ['Sao lưu & khôi phục', 'ti-database-export'],
         'commands' => ['Lệnh hệ thống', 'ti-terminal-2'],
@@ -58,9 +66,12 @@ class SystemController extends Controller
         private EnvEditor $env,
     ) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $tab = array_key_exists($request->query('tab'), self::TABS) ? $request->query('tab') : 'overview';
+        if ($tab === 'question-types') {
+            return redirect()->route('admin.system.question-types.index');
+        }
 
         $data = ['tab' => $tab, 'tabs' => self::TABS, 'env' => $this->env];
 
@@ -72,6 +83,17 @@ class SystemController extends Controller
                 'tables' => collect($this->sync->syncableTables())->mapWithKeys(fn ($t) => [$t => DB::table($t)->count()]),
                 'allTables' => collect(\Illuminate\Support\Facades\Schema::getTables())->pluck('name')->sort()->values(),
                 'fileDirs' => $this->files->dirs(),
+            ],
+            'ai' => $data += [
+                'envWritable' => $this->env->isWritable(),
+                'aiStats' => app(AiLimiter::class)->stats(),
+                'jobCounts' => app(AiJobRunner::class)->counts(),
+                'lanes' => app(AiJobRunner::class)->lanes(),
+                'jobs' => AiJob::latest('id')->limit(20)->get(),
+                'heartbeat' => AiJobRunner::lastHeartbeat(),
+                // Gọi thẳng ai:work: hosting tắt proc_open nên schedule:run không chạy được lệnh con.
+                // Mỗi dòng cron là 1 luồng chạy song song.
+                'cronLines' => collect(range(1, max(1, (int) config('ai.jobs.workers'))))->map(fn ($n) => '/usr/local/bin/ea-php82 '.base_path('artisan').' ai:work --slot='.$n.' >/dev/null 2>&1')->all(),
             ],
             'backups' => $data += ['backups' => $this->sync->backups()],
             'commands' => $data += ['commands' => self::COMMANDS],
@@ -162,6 +184,109 @@ class SystemController extends Controller
         $this->sync->log('config', ['user' => auth()->user()->email, 'keys' => array_keys($values)]);
 
         return redirect()->route('admin.system.index', ['tab' => $tab])->with('status', $message);
+    }
+
+    // ------------------------------------------------------------------
+    // AI
+    // ------------------------------------------------------------------
+
+    public function updateAi(Request $request): RedirectResponse
+    {
+        $model = ['required', 'string', 'max:80', 'regex:/^[A-Za-z0-9._:\/-]+$/'];
+        $money = ['required', 'numeric', 'min:0', 'max:100000'];
+        $data = $request->validate([
+            'api_key' => ['nullable', 'string', 'min:20', 'max:300', 'regex:/^[A-Za-z0-9_\-]+$/'],
+            'model_analysis' => $model, 'model_generate' => $model, 'model_grading' => $model,
+            'model_ocr' => $model, 'model_transcribe' => $model, 'model_tts' => $model,
+            'timeout' => ['required', 'integer', 'min:10', 'max:120'],
+            'recordings_keep_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
+            'limit_actor_daily' => ['required', 'integer', 'min:0', 'max:100000'],
+            'limit_monthly_calls' => ['required', 'integer', 'min:0', 'max:10000000'],
+            'budget_monthly_usd' => $money,
+            'price_input_1m' => $money, 'price_output_1m' => $money,
+            'price_transcribe_min' => $money, 'price_tts_1m_chars' => $money,
+        ], [
+            'api_key.regex' => 'API key chỉ gồm chữ, số, dấu gạch.',
+            'regex' => 'Tên model chỉ gồm chữ, số và . _ : / -',
+        ]);
+
+        $values = [
+            'AI_MODEL_ANALYSIS' => $data['model_analysis'],
+            'AI_MODEL_GENERATE' => $data['model_generate'],
+            'AI_MODEL_GRADING' => $data['model_grading'],
+            'AI_MODEL_OCR' => $data['model_ocr'],
+            'AI_MODEL_TRANSCRIBE' => $data['model_transcribe'],
+            'AI_MODEL_TTS' => $data['model_tts'],
+            'AI_TTS_ENABLED' => $request->boolean('tts_enabled'),
+            'AI_TIMEOUT' => (int) $data['timeout'],
+            'AI_RECORDINGS_KEEP_DAYS' => (int) ($data['recordings_keep_days'] ?? config('ai.recordings_keep_days')),
+            'AI_LIMIT_ACTOR_DAILY' => (int) $data['limit_actor_daily'],
+            'AI_LIMIT_MONTHLY_CALLS' => (int) $data['limit_monthly_calls'],
+            'AI_BUDGET_MONTHLY_USD' => (string) (float) $data['budget_monthly_usd'],
+            'AI_PRICE_INPUT_1M' => (string) (float) $data['price_input_1m'],
+            'AI_PRICE_OUTPUT_1M' => (string) (float) $data['price_output_1m'],
+            'AI_PRICE_TRANSCRIBE_MIN' => (string) (float) $data['price_transcribe_min'],
+            'AI_PRICE_TTS_1M_CHARS' => (string) (float) $data['price_tts_1m_chars'],
+        ];
+        if (filled($data['api_key'] ?? null)) {
+            $values['OPENAI_API_KEY'] = $data['api_key'];
+        }
+
+        $response = $this->writeEnv($values, 'ai', 'Đã lưu cấu hình AI.');
+        // Hạn mức có thể vừa được tăng → các việc đang tạm dừng vì hết hạn mức chạy tiếp ngay
+        // (nếu vẫn chưa đủ hạn mức, việc sẽ tự tạm dừng lại).
+        if ($resumed = AiJob::resumePaused()) {
+            $response->with('status', "Đã lưu cấu hình AI. {$resumed} việc đang tạm dừng vì hết hạn mức sẽ chạy tiếp ngay.");
+        }
+
+        return $response;
+    }
+
+    /** Gọi AI trực tiếp (không qua hàng đợi) để kiểm tra kết nối. */
+    public function aiTest(Ai $ai): RedirectResponse
+    {
+        $started = microtime(true);
+        try {
+            $r = PingJob::ask($ai->for(auth()->user()));
+            $msg = sprintf('AI phản hồi sau %.1f giây: “%s” — từ thử: %s = %s', microtime(true) - $started, $r['reply_vi'], $r['word'], $r['meaning_vi']);
+
+            return redirect()->route('admin.system.index', ['tab' => 'ai'])->with('status', $msg);
+        } catch (AiException $e) {
+            return redirect()->route('admin.system.index', ['tab' => 'ai'])->withErrors('Gọi AI thất bại: '.$e->getMessage());
+        }
+    }
+
+    /** Đưa một việc thử nghiệm vào hàng đợi. */
+    public function aiTestJob(): RedirectResponse
+    {
+        $job = AiJob::dispatch('ping', ['by' => auth()->user()->email], 'test');
+
+        return redirect()->route('admin.system.index', ['tab' => 'ai'])
+            ->with('status', "Đã đưa việc thử #{$job->id} vào hàng đợi. Cron sẽ xử lý trong vòng 1 phút, hoặc bấm “Chạy hàng đợi ngay”.");
+    }
+
+    /** Xử lý hàng đợi ngay trong request này (tối đa ~20 giây). */
+    public function aiTick(AiJobRunner $runner): RedirectResponse
+    {
+        $s = $runner->work(20);
+
+        return redirect()->route('admin.system.index', ['tab' => 'ai'])->with('status', sprintf(
+            'Đã xử lý %d việc: xong %d, sẽ thử lại %d, lỗi %d, tạm dừng vì hạn mức %d.', $s['processed'], $s['done'], $s['retry'], $s['failed'], $s['paused']
+        ));
+    }
+
+    public function aiRetryFailed(): RedirectResponse
+    {
+        $n = AiJob::retryFailed();
+
+        return redirect()->route('admin.system.index', ['tab' => 'ai'])->with('status', "Đã đưa {$n} việc lỗi vào hàng chờ chạy lại.");
+    }
+
+    public function aiRetryJob(AiJob $job): RedirectResponse
+    {
+        $job->retry();
+
+        return redirect()->route('admin.system.index', ['tab' => 'ai'])->with('status', "Đã đưa việc #{$job->id} vào hàng chờ lại.");
     }
 
     // ------------------------------------------------------------------
@@ -319,6 +444,8 @@ class SystemController extends Controller
                 'Cache route' => app()->routesAreCached() ? 'Đang bật' : 'Không',
                 'Đồng bộ CSDL' => $check((bool) config('dbsync.enabled') && filled(config('dbsync.token')), 'Bật', 'Tắt'),
                 'Đồng bộ thư mục' => $check((bool) config('dbsync.files_enabled') && filled(config('dbsync.token')), 'Bật', 'Tắt'),
+                'AI (OpenAI)' => $check(filled(config('ai.openai.key')), 'Đã có API key', 'Chưa có API key'),
+                'Cron hàng đợi AI' => $check((bool) AiJobRunner::lastHeartbeat(), 'Chạy lần cuối '.(AiJobRunner::lastHeartbeat() ? \Illuminate\Support\Carbon::parse(AiJobRunner::lastHeartbeat())->diffForHumans() : ''), 'Chưa thấy chạy'),
             ],
         ];
     }

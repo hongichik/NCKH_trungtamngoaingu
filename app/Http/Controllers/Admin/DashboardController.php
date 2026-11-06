@@ -12,7 +12,6 @@ use App\Models\Page;
 use App\Models\Post;
 use App\Models\Student;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -64,10 +63,9 @@ class DashboardController extends Controller
         if ($user->hasAnyPermissionFor('posts')) {
             $months = collect(range(5, 0))->map(fn ($i) => Carbon::now()->subMonths($i)->startOfMonth());
 
-            $counts = Post::selectRaw("DATE_FORMAT(created_at, '%Y-%m') ym, COUNT(*) c")
-                ->where('created_at', '>=', $months->first())
-                ->groupBy('ym')
-                ->pluck('c', 'ym');
+            // Gom nhóm trong PHP để chạy được trên mọi CSDL (MySQL / SQLite / PostgreSQL).
+            $counts = Post::where('created_at', '>=', $months->first())->pluck('created_at')
+                ->countBy(fn ($d) => Carbon::parse($d)->format('Y-m'));
 
             $postsChart = [
                 'labels' => $months->map(fn ($m) => $m->translatedFormat('m/Y'))->all(),
@@ -80,10 +78,8 @@ class DashboardController extends Controller
             $currentYear = (int) date('Y');
             $startYear = $currentYear - 5;
 
-            $counts = Certificate::selectRaw('YEAR(issue_date) y, COUNT(*) c')
-                ->whereBetween(DB::raw('YEAR(issue_date)'), [$startYear, $currentYear])
-                ->groupBy('y')
-                ->pluck('c', 'y');
+            $counts = Certificate::whereBetween('issue_date', [Carbon::create($startYear)->startOfYear(), Carbon::create($currentYear)->endOfYear()])
+                ->pluck('issue_date')->countBy(fn ($d) => Carbon::parse($d)->year);
 
             $years = range($startYear, $currentYear);
 

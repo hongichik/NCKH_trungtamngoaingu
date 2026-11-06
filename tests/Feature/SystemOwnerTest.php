@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Admin\SystemController;
 use App\Models\User;
 use App\Support\DbSync\DatabaseSync;
 use App\Support\EnvEditor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -94,8 +94,8 @@ class SystemOwnerTest extends TestCase
         $this->actingAs($this->staff)->get('/admin/system')->assertForbidden();
         $this->actingAs($this->admin)->get('/admin/system')->assertForbidden();
 
-        foreach (array_keys(\App\Http\Controllers\Admin\SystemController::TABS) as $tab) {
-            $this->actingAs($this->owner)->get('/admin/system?tab='.$tab)->assertOk();
+        foreach (array_keys(SystemController::TABS) as $tab) {
+            $this->actingAs($this->owner)->followingRedirects()->get('/admin/system?tab='.$tab)->assertOk();
         }
         // (Dashboard dùng hàm riêng của MySQL nên không render được trên SQLite trong test.)
         $this->actingAs($this->owner)->get('/admin/users')->assertOk()->assertSee('Quản trị hệ thống')->assertSee('Chủ hệ thống');

@@ -1,0 +1,27 @@
+// Video quản trị 3: Học viên, chứng chỉ, liên hệ
+export default (d) => ({
+    slug: 'qtv-hoc-vien-chung-chi',
+    title: 'Quản trị viên — Học viên, chứng chỉ & liên hệ',
+    scenes: [
+        { caption: false, say: 'Xin chào! Video này hướng dẫn quản lý hồ sơ học viên, nhập và tra cứu chứng chỉ, và xử lý liên hệ từ website.',
+            do: async (t) => { await t.card('Quản trị viên', 'Học viên · Chứng chỉ · Liên hệ', 'Hồ sơ · Số hiệu chứng chỉ · Tra cứu công khai · Phản hồi'); await t.goto('/admin/login'); } },
+        { say: 'Đăng nhập trang quản trị, vào nhóm Học viên và Chứng chỉ ở menu trái.',
+            do: async (t) => { await t.hideCard(); await t.login('/admin/login', 'demo.admin' + d.domain, d.password); await t.point('aside a:has-text("Học viên")', 1200); } },
+        { say: 'Mục Học viên là kho hồ sơ: tìm nhanh theo tên hoặc số căn cước. Mỗi dòng cho biết số báo danh, ngày sinh, liên hệ và trạng thái.',
+            do: async (t) => { await t.nav('/admin/students'); await t.type('input[name=q]', 'Nguyễn', { delay: 60 }); await t.click('button:has-text("Tìm")', { wait: 800 }); await t.scroll(250); } },
+        { say: 'Bấm Thêm học viên để tạo hồ sơ: họ, tên, số báo danh, căn cước, giới tính, ngày sinh, nơi sinh, điện thoại và email. Email là tên đăng nhập nếu sau này cấp tài khoản học trực tuyến.',
+            do: async (t) => { await t.goto('/admin/students/create'); await t.point('input[name=last_name]', 700); await t.point('input[name=first_name]', 700); await t.point('input[name=identity_number]', 700); await t.point('input[name=dob]', 700); await t.point('input[name=email]', 900); } },
+        { say: 'Mục Chứng chỉ lưu kết quả đã cấp. Tìm theo số hiệu để tra nhanh khi học viên hoặc đơn vị tuyển dụng cần đối chiếu.',
+            do: async (t) => { await t.nav('/admin/certificates'); await t.point('input[name=q]', 1000); await t.scroll(250); } },
+        { say: 'Thêm chứng chỉ: chọn học viên, nhập số hiệu, số chứng chỉ, loại chứng chỉ, xếp loại, ngày thi, nơi thi, ngày cấp và nơi cấp. Trạng thái Đã đăng thì tra cứu công khai thấy được.',
+            do: async (t) => { await t.goto('/admin/certificates/create'); await t.point('select[name=student_id], input[name=student_id]', 800); await t.point('input[name=serial_number]', 700); await t.point('select[name=certificate_type], input[name=certificate_type]', 700); await t.point('input[name=exam_date]', 700); await t.point('select[name=status]', 800); } },
+        { say: 'Người ngoài tra cứu chứng chỉ ở trang Tra cứu chứng chỉ trên website: nhập số hiệu, hệ thống hiện thông tin người được cấp và kết quả. Trang này giới hạn số lần tra cứu để chống dò quét.',
+            do: async (t) => { await t.goto('/tra-cuu-chung-chi'); await t.point('input[name=serial_number], input[name=q], form input', 1200); await t.scroll(200); } },
+        { say: 'Mục Liên hệ nhận câu hỏi khách gửi từ form Liên hệ. Liên hệ chưa đọc được đếm ở trang Tổng quan. Bấm Xem để mở chi tiết.',
+            do: async (t) => { await t.nav('/admin/contacts'); const row = t.page.locator('a[href*="/admin/contacts/"]:visible').first(); if (await row.count()) { await t.point(row, 800); await t.click(row, { wait: 800 }); } else { await t.goto('/admin/contacts/5'); } } },
+        { say: 'Trang chi tiết hiện nội dung, thông tin người gửi và lịch sử phản hồi. Gõ câu trả lời rồi bấm Gửi phản hồi; nội dung lưu lại để đồng nghiệp cùng theo dõi.',
+            do: async (t) => { const box = t.page.locator('textarea[name=message]'); if (await box.count()) { await t.type(box, 'Chào bạn, lớp A2 khai giảng ngày 2 tháng 12, học tối thứ 2, 4, 6. Trung tâm sẽ gọi lại để tư vấn chi tiết.', { delay: 22 }); await t.point('button:has-text("Gửi phản hồi")', 1200); } } },
+        { caption: false, say: 'Đó là các thao tác với học viên, chứng chỉ và liên hệ. Video tiếp theo: tổ chức kỳ thi và xử lý đăng ký dự thi.',
+            do: async (t) => { await t.card('Cảm ơn bạn đã theo dõi', 'Học viên · Chứng chỉ · Liên hệ', 'Tiếp theo: Kỳ thi & đăng ký dự thi'); } },
+    ],
+});

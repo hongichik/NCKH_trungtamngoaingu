@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Teacher;
 use App\Models\User;
 use App\Support\DbSync\DatabaseSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -169,6 +170,32 @@ class DbSyncTest extends TestCase
         $this->assertSame(['users'], $sync->tablesIn([$file]));
         $rows = collect(iterator_to_array($sync->readLines([$file]), false))->pluck('row')->filter()->values();
         $this->assertSame('x@x.x', $rows[0]['email']);
+    }
+
+    public function test_protected_tables_can_be_pulled_but_never_pushed(): void
+    {
+        Teacher::create(['name' => 'GV', 'email' => 'gv@x.x', 'password' => 'secret123']);
+        $auth = ['Authorization' => 'Bearer '.$this->token];
+
+        // Mặc định export không có bảng giáo viên; include_protected=1 thì có
+        $plain = $this->get('/api/db-sync/export', $auth)->streamedContent();
+        $with = $this->get('/api/db-sync/export?include_protected=1', $auth)->streamedContent();
+        File::ensureDirectoryExists($this->tmp);
+        file_put_contents($a = $this->tmp.'/a.gz', $plain);
+        file_put_contents($b = $this->tmp.'/b.gz', $with);
+        $sync = app(DatabaseSync::class);
+        $this->assertNotContains('teachers', $sync->tablesIn([$a]));
+        $this->assertContains('teachers', $sync->tablesIn([$b]));
+
+        // Đẩy lên máy chủ (commit) KHÔNG ghi đè bảng giáo viên dù gói có chứa
+        $id = bin2hex(random_bytes(16));
+        $this->sendChunk($id, 1, gzencode(json_encode(['meta' => ['format' => DatabaseSync::FORMAT_VERSION, 'migrations' => []]])."\n{\"table\":\"teachers\"}\n"))->assertOk();
+        $this->commit($id)->assertOk()->assertJsonFragment(['skipped' => ['teachers']]);
+        $this->assertSame(1, Teacher::count());
+
+        // Kéo về local (import có includeProtected) thì nhận
+        $r = $sync->import([$b], false, true);
+        $this->assertArrayHasKey('teachers', $r['tables']);
     }
 
     public function test_push_command_end_to_end(): void

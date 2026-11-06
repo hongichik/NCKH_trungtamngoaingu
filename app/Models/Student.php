@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -39,7 +41,25 @@ class Student extends Authenticatable
         'dob' => 'date',
         'identity_date' => 'date',
         'password' => 'hashed',
+        'must_change_password' => 'boolean',
+        'login_locked' => 'boolean',
+        'last_login_at' => 'datetime',
     ];
+
+    public function classrooms(): BelongsToMany
+    {
+        return $this->belongsToMany(Classroom::class)->withTimestamps();
+    }
+
+    public function stats(): HasOne
+    {
+        return $this->hasOne(StudentStat::class);
+    }
+
+    public function badges(): HasMany
+    {
+        return $this->hasMany(StudentBadge::class);
+    }
 
     public function certificates(): HasMany
     {

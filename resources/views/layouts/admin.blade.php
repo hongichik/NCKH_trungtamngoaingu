@@ -185,6 +185,36 @@
                         </li>
                     @endif
 
+                    @if ($user->hasAnyPermissionFor('teachers'))
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.teachers.*') ? 'active' : '' }}" href="{{ route('admin.teachers.index') }}">
+                                <span class="nav-link-icon"><i class="ti ti-chalkboard"></i></span>
+                                <span class="nav-link-title">Giáo viên</span>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if ($user->hasPermission('learning', 'view'))
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.courses.*') ? 'active' : '' }}" href="{{ route('admin.courses.index') }}">
+                                <span class="nav-link-icon"><i class="ti ti-school"></i></span>
+                                <span class="nav-link-title">Khoá học</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.classrooms.*') ? 'active' : '' }}" href="{{ route('admin.classrooms.index') }}">
+                                <span class="nav-link-icon"><i class="ti ti-users-group"></i></span>
+                                <span class="nav-link-title">Lớp học</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.student-accounts.*') ? 'active' : '' }}" href="{{ route('admin.student-accounts.index') }}">
+                                <span class="nav-link-icon"><i class="ti ti-user-shield"></i></span>
+                                <span class="nav-link-title">Tài khoản học viên</span>
+                            </a>
+                        </li>
+                    @endif
+
                     @if ($user->is_admin)
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">
@@ -212,8 +242,10 @@
             <div class="container-xl">
                 <div class="row g-2 align-items-center">
                     <div class="col">
+                        @hasSection('pretitle')<div class="page-pretitle">@yield('pretitle')</div>@endif
                         <h2 class="page-title">@yield('title')</h2>
                     </div>
+                    @hasSection('actions')<div class="col-auto d-print-none">@yield('actions')</div>@endif
                     <div class="col-auto ms-auto d-print-none">
                         <div class="dropdown">
                             <a href="#" class="btn btn-ghost-secondary dropdown-toggle" data-bs-toggle="dropdown">

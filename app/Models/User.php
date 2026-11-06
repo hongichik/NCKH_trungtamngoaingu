@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -10,7 +11,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -110,5 +111,24 @@ class User extends Authenticatable
         }
 
         return $this->permissions->contains(fn (Permission $permission) => $permission->module === $module);
+    }
+
+    // ---------------------------------------------------------------- khoá học / giáo trình (V2)
+    // Quản trị viên có quyền "Khoá học & lớp học · Sửa" làm được mọi việc mà giáo viên được cấp quyền sửa khoá làm được.
+
+    public function canEditCourse(Course $course): bool
+    {
+        return $this->hasPermission('learning', 'edit');
+    }
+
+    public function canEditTextbook(Textbook $textbook): bool
+    {
+        return $this->hasPermission('learning', 'edit');
+    }
+
+    /** @return list<int> */
+    public function textbookIds(): array
+    {
+        return $this->hasPermission('learning', 'edit') ? Textbook::pluck('id')->all() : [];
     }
 }

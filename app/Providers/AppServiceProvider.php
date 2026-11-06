@@ -20,7 +20,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Nhà cung cấp AI dùng chung (đổi bằng AI_PROVIDER).
+        $this->app->bind(\App\Support\Ai\AiProvider::class, function () {
+            return match (config('ai.provider')) {
+                default => new \App\Support\Ai\OpenAiProvider((string) config('ai.openai.key'), (string) config('ai.openai.base_url')),
+            };
+        });
     }
 
     /**
